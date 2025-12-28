@@ -593,6 +593,206 @@ ActiveHighlights[userId] = nil
 end
 end
 end
+
+-- ============================================
+-- SISTEMA DE AUTO-DODGE (ESQUIVE AUTOMÁTICO)
+-- ============================================
+local AutoDodgeEnabled = false
+local DodgeConnection = nil
+local LastDodgeTime = 0
+local DODGE_COOLDOWN = 0.3 -- Cooldown entre dodges (evitar spam)
+local DODGE_DETECTION_RANGE = 7 -- Studs para detectar enemigo
+local DODGE_TELEPORT_DISTANCE = 11 -- Studs detrás del enemigo
+
+-- Función para calcular posición detrás del enemigo
+local function GetPositionBehindEnemy(enemyPosition, enemyLookVector)
+    -- Calcular posición 11 studs detrás del enemigo
+    local behindPosition = enemyPosition - (enemyLookVector * DODGE_TELEPORT_DISTANCE)
+    return behindPosition
+end
+
+-- Función para orientar el personaje hacia el enemigo
+local function FaceEnemy(character, enemyPosition)
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    -- Calcular dirección hacia el enemigo
+    local direction = (enemyPosition - rootPart.Position).Unit
+    local lookCFrame = CFrame.new(rootPart.Position, rootPart.Position + direction)
+    
+    -- Aplicar rotación manteniendo posición Y
+    rootPart.CFrame = CFrame.new(rootPart.Position.X, rootPart.Position.Y, rootPart.Position.Z) * 
+                      (lookCFrame - lookCFrame.Position)
+end
+
+-- Función principal de Auto-Dodge
+local function AutoDodge()
+    local character = LP.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local currentTime = tick()
+    
+    -- Cooldown check
+    if currentTime - LastDodgeTime < DODGE_COOLDOWN then
+        return
+    end
+    
+    -- Escanear enemigos cercanos
+    local enemies = GetNearbyEnemies(DODGE_DETECTION_RANGE)
+    
+    if #enemies > 0 then
+        -- Obtener enemigo más cercano
+        local closestEnemy = enemies[1]
+        local enemyPlayer = Players:GetPlayerByUserId(closestEnemy.userId)
+        
+        if enemyPlayer and enemyPlayer.Character then
+            local enemyRoot = enemyPlayer.Character:FindFirstChild("HumanoidRootPart")
+            
+            if enemyRoot then
+                -- Obtener dirección hacia donde mira el enemigo
+                local enemyLookVector = enemyRoot.CFrame.LookVector
+                local enemyPosition = enemyRoot.Position
+                
+                -- Calcular posición detrás del enemigo
+                local dodgePosition = GetPositionBehindEnemy(enemyPosition, enemyLookVector)
+                
+                -- Ajustar altura para evitar quedar bajo el suelo
+                dodgePosition = Vector3.new(dodgePosition.X, dodgePosition.Y + 3, dodgePosition.Z)
+                
+                -- Teleportar
+                rootPart.CFrame = CFrame.new(dodgePosition)
+                
+                -- Orientar hacia el enemigo
+                task.wait(0.05) -- Pequeña espera para estabilizar
+                FaceEnemy(character, enemyPosition)
+                
+                -- Actualizar timestamp
+                LastDodgeTime = currentTime
+                
+                print("[Lux Auto-Dodge] Esquivó a:", closestEnemy.name, "| Distancia original:", closestEnemy.distance)
+            end
+        end
+    end
+end
+
+-- Función para activar Auto-Dodge
+local function EnableAutoDodge()
+    if AutoDodgeEnabled then
+        return false, "Auto-Dodge ya está activo"
+    end
+    
+    AutoDodgeEnabled = true
+    
+    -- Loop de detección continua
+    DodgeConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if AutoDodgeEnabled and LP.Character then
+            AutoDodge()
+        end
+    end)
+    
+    print("[Lux] Auto-Dodge ACTIVADO")
+    return true, "Auto-Dodge activado - Te teletransportarás detrás de enemigos cercanos"
+end
+
+-- Función para desactivar Auto-Dodge
+local function DisableAutoDodge()
+    if not AutoDodgeEnabled then
+        return false, "Auto-Dodge no está activo"
+    end
+    
+    AutoDodgeEnabled = false
+    
+    if DodgeConnection then
+        DodgeConnection:Disconnect()
+        DodgeConnection = nil
+    end
+    
+    print("[Lux] Auto-Dodge DESACTIVADO")
+    return true, "Auto-Dodge desactivado"
+end
+
+-- Función para verificar estado de Auto-Dodge
+local function IsAutoDodgeActive()
+    return AutoDodgeEnabled
+end
+
+-- Sistema de seguimiento mejorado
+local FollowTarget = nil
+local FollowConnection = nil
+local FOLLOW_SPEED = 16
+local FOLLOW_DISTANCE = 5
+
+-- Función para seguir a un jugador
+function FollowPlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then
+        return false, "jugador no encontrado"
+    end
+    
+    -- Detener seguimiento anterior si existe
+    StopFollowing()
+    
+    FollowTarget = targetPlayer
+    
+    print("[Lux] Siguiendo a:", targetPlayer.Name)
+    
+    -- Loop de seguimiento
+    FollowConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not FollowTarget or not FollowTarget.Character then
+            StopFollowing()
+            return
+        end
+        
+        local character = LP.Character
+        if not character then return end
+        
+        local humanoid = character:FindFirstChild("Humanoid")
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        
+        if not humanoid or not rootPart then return end
+        
+        local targetRoot = FollowTarget.Character:FindFirstChild("HumanoidRootPart")
+        if not targetRoot then
+            StopFollowing()
+            return
+        end
+        
+        local distance = (rootPart.Position - targetRoot.Position).Magnitude
+        
+        -- Solo moverse si está lejos
+        if distance > FOLLOW_DISTANCE then
+            humanoid:MoveTo(targetRoot.Position)
+        else
+            humanoid:MoveTo(rootPart.Position) -- Detenerse
+        end
+    end)
+    
+    return true, "siguiendo"
+end
+
+-- Función para detener seguimiento
+function StopFollowing()
+    if FollowConnection then
+        FollowConnection:Disconnect()
+        FollowConnection = nil
+    end
+    
+    FollowTarget = nil
+    
+    -- Detener movimiento
+    local character = LP.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:MoveTo(character.HumanoidRootPart.Position)
+        end
+    end
+    
+    print("[Lux] Seguimiento detenido")
+end
+
 -- ============================================
 -- SISTEMA DE ANÁLISIS DE MAPAS
 -- ============================================
@@ -1935,6 +2135,8 @@ MAP ANALYSIS:
 SCRIPT EXECUTION (ONLY IN PRIVATE MODE):
 - You can execute Roblox scripts for the user
 - Available scripts: GRIP, God Mode (protección), Fly (vuelo), Infinite Yield, Nameless Admin
+- NEW: Auto-Dodge system - teleports behind enemies when they get close (7 studs)
+- Commands: "auto dodge" to toggle, "stop follow" to stop following
 - When user wants to execute a script, respond with EXACT format: [EXECUTE:keyword]
 - Examples: [EXECUTE:grip], [EXECUTE:vuelo], [EXECUTE:inf yield]
 - If user uses wrong keyword, suggest the correct one
@@ -2425,6 +2627,33 @@ SendChatMessage("❌ " .. message)
 end
 return
 end
+
+-- Comando especial: activar Auto-Dodge (solo modo privado)
+if PRIVATE_MODE and (userMessage:lower() == "auto dodge" or userMessage:lower() == "autododge" or userMessage:lower() == "esquive auto") then
+    local canUse, remaining = CanUseCommand(userId, "autododge")
+    if not canUse then
+        SendChatMessage("Espera " .. remaining .. "s ⏳")
+        return
+    end
+    
+    if not IsAutoDodgeActive() then
+        local success, message = EnableAutoDodge()
+        if success then
+            SendChatMessage("✅ " .. message)
+        else
+            SendChatMessage("❌ " .. message)
+        end
+    else
+        local success, message = DisableAutoDodge()
+        if success then
+            SendChatMessage("🛑 " .. message)
+        else
+            SendChatMessage("❌ " .. message)
+        end
+    end
+    return
+end
+
 -- Comando especial: detener baile
 if userMessage:lower() == "stop" then
 local success, message = StopCharacterDance()
@@ -2451,20 +2680,27 @@ SendChatMessage("No puedo seguirte: " .. message)
 end
 return
 end
--- Comando especial: detener seguimiento
-if userMessage:lower() == "detente" or userMessage:lower() == "para" or userMessage:lower() == "quieto" then
-local canUse, remaining = CanUseCommand(userId, "detener")
-if not canUse then
-SendChatMessage("Espera " .. remaining .. "s ⏳")
-return
-end
-if FollowTarget then
-StopFollowing()
-SendChatMessage("Me detengo aquí 🛑")
-else
-SendChatMessage("No estoy siguiendo a nadie")
-end
-return
+-- Comando especial: detener seguimiento (MEJORADO - funciona en público y privado)
+if userMessage:lower() == "detente" or 
+   userMessage:lower() == "para" or 
+   userMessage:lower() == "quieto" or 
+   userMessage:lower() == "no me sigas" or 
+   userMessage:lower() == "stop follow" or
+   userMessage:lower() == "deja de seguir" then
+    
+    local canUse, remaining = CanUseCommand(userId, "detener")
+    if not canUse then
+        SendChatMessage("Espera " .. remaining .. "s ⏳")
+        return
+    end
+    
+    if FollowTarget then
+        StopFollowing()
+        SendChatMessage("Me detengo aqui")
+    else
+        SendChatMessage("No estoy siguiendo a nadie")
+    end
+    return
 end
 -- Comando especial: listar scripts disponibles (solo en modo privado)
 if PRIVATE_MODE and (userMessage:lower() == "scripts" or userMessage:lower() == "lista") then
