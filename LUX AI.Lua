@@ -110,6 +110,146 @@ local IDLE_TIMEOUT = 5 -- Segundos de inactividad antes de detener
 -- ============================================
 -- SISTEMA DE COOLDOWN PARA COMANDOS ESPECIALES
 -- ============================================
+
+-- Función para seguir a un jugador
+local function FollowPlayer(targetPlayer)
+    if not targetPlayer or not targetPlayer.Character then
+        return false, "jugador no encontrado"
+    end
+    
+    local character = LP.Character
+    if not character then
+        return false, "tu personaje no encontrado"
+    end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then
+        return false, "humanoid no encontrado"
+    end
+    
+    -- Detener seguimiento anterior
+    if FollowConnection then
+        FollowConnection:Disconnect()
+        FollowConnection = nil
+    end
+    
+    FollowTarget = targetPlayer
+    LastTargetPosition = nil
+    LastMovementTime = tick()
+    
+    -- Crear loop de seguimiento
+    FollowConnection = game:GetService("RunService").Heartbeat:Connect(function()
+        if not FollowTarget or not FollowTarget.Character then
+            StopFollowing()
+            return
+        end
+        
+        local targetRoot = FollowTarget.Character:FindFirstChild("HumanoidRootPart")
+        local myRoot = character:FindFirstChild("HumanoidRootPart")
+        
+        if not targetRoot or not myRoot then
+            return
+        end
+        
+        local distance = (targetRoot.Position - myRoot.Position).Magnitude
+        
+        -- Si está muy lejos, seguir; si está muy cerca, detenerse
+        if distance > FOLLOW_DISTANCE then
+            humanoid:MoveTo(targetRoot.Position)
+            LastMovementTime = tick()
+        else
+            humanoid:MoveTo(myRoot.Position) -- Detenerse
+        end
+        
+        -- Detectar si el objetivo no se mueve por mucho tiempo
+        if LastTargetPosition then
+            local targetMoved = (targetRoot.Position - LastTargetPosition).Magnitude
+            if targetMoved < 1 and (tick() - LastMovementTime) > IDLE_TIMEOUT then
+                -- El objetivo no se ha movido, detener seguimiento
+                StopFollowing()
+                SendChatMessage("Te detuviste, así que yo también 🛑")
+            end
+        end
+        
+        LastTargetPosition = targetRoot.Position
+    end)
+    
+    return true, "siguiendo"
+end
+
+-- Función para detener el seguimiento
+local function StopFollowing()
+    if FollowConnection then
+        FollowConnection:Disconnect()
+        FollowConnection = nil
+    end
+    
+    FollowTarget = nil
+    LastTargetPosition = nil
+    
+    -- Detener movimiento del personaje
+    local character = LP.Character
+    if character then
+        local humanoid = character:FindFirstChild("Humanoid")
+        if humanoid then
+            humanoid:MoveTo(character.HumanoidRootPart.Position)
+        end
+    end
+end
+
+-- Función para buscar script por keyword
+local function FindScriptByKeyword(keyword)
+    keyword = keyword:lower()
+    
+    for _, script in ipairs(AVAILABLE_SCRIPTS) do
+        for _, kw in ipairs(script.keywords) do
+            if kw:lower():find(keyword, 1, true) or keyword:find(kw:lower(), 1, true) then
+                return script, nil
+            end
+        end
+    end
+    
+    -- Si no se encontró, buscar sugerencias
+    local suggestions = {}
+    for _, script in ipairs(AVAILABLE_SCRIPTS) do
+        for _, kw in ipairs(script.keywords) do
+            if kw:lower():sub(1, 3) == keyword:sub(1, 3) then
+                table.insert(suggestions, {keyword = kw, script = script})
+            end
+        end
+    end
+    
+    return nil, suggestions
+end
+
+-- Función para ejecutar scripts de forma segura
+local function SafeExecuteScript(url)
+    if not url or url == "" then
+        return false, "URL inválida"
+    end
+    
+    local success, result = pcall(function()
+        if game.HttpGet then
+            local scriptContent = game:HttpGet(url)
+            if scriptContent and #scriptContent > 0 then
+                local executeFunc = loadstring(scriptContent)
+                if executeFunc then
+                    executeFunc()
+                    return true
+                else
+                    return false
+                end
+            end
+        end
+        return false
+    end)
+    
+    if success and result then
+        return true, "Ejecutado correctamente"
+    else
+        return false, tostring(result) or "Error desconocido"
+    end
+end
 local CommandCooldowns = {} -- {[UserId] = {[CommandName] = tick()}}
 local COMMAND_COOLDOWN = 4 -- Segundos de cooldown entre comandos
 local function CanUseCommand(userId, commandName)
@@ -2290,23 +2430,19 @@ SendChatMessage("❌ " .. message)
 end
 return
 end
--- Comando especial: seguir/sígueme
+-- Comando especial: seguir/sígueme (DISPONIBLE EN AMBOS MODOS)
 if userMessage:lower():match("^sigu") or userMessage:lower():match("^seg") or userMessage:lower() == "ven" then
 local canUse, remaining = CanUseCommand(userId, "seguir")
 if not canUse then
 SendChatMessage("Espera " .. remaining .. "s ⏳")
 return
 end
--- Solo en modo privado O si el jugador está en conversación activa
-if PRIVATE_MODE or isInConversation then
+-- ✅ AHORA FUNCIONA EN MODO PÚBLICO Y PRIVADO
 local success, message = FollowPlayer(player)
 if success then
 SendChatMessage("¡Voy para allá! 🏃")
 else
 SendChatMessage("No puedo seguirte: " .. message)
-end
-else
-SendChatMessage("Primero di 'lux hola' para iniciar conversación")
 end
 return
 end
