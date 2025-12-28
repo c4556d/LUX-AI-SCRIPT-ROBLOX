@@ -595,38 +595,115 @@ end
 end
 
 -- ============================================
--- SISTEMA DE AUTO-DODGE (ESQUIVE AUTOMÁTICO)
+-- SISTEMA DE AUTO-DODGE (ESQUIVE AUTOMÁTICO OPTIMIZADO)
 -- ============================================
 local AutoDodgeEnabled = false
 local DodgeConnection = nil
 local LastDodgeTime = 0
-local DODGE_COOLDOWN = 0.3 -- Cooldown entre dodges (evitar spam)
-local DODGE_DETECTION_RANGE = 7 -- Studs para detectar enemigo
-local DODGE_TELEPORT_DISTANCE = 11 -- Studs detrás del enemigo
+local DODGE_COOLDOWN = 0.15 -- Cooldown MÁS RÁPIDO entre dodges
+local DODGE_DETECTION_RANGE = 12 -- Studs para detectar enemigo (AUMENTADO)
+local DODGE_TELEPORT_DISTANCE = 18 -- Studs de alejamiento (AUMENTADO)
+local EnemyCache = {} -- Cache de enemigos con timestamp
+local ENEMY_CACHE_TIMEOUT = 2 -- Segundos antes de re-verificar team
 
--- Función para calcular posición detrás del enemigo
-local function GetPositionBehindEnemy(enemyPosition, enemyLookVector)
-    -- Calcular posición 11 studs detrás del enemigo
-    local behindPosition = enemyPosition - (enemyLookVector * DODGE_TELEPORT_DISTANCE)
-    return behindPosition
+-- Función para verificar si un jugador ES REALMENTE enemigo (actualizado)
+local function IsRealEnemy(player)
+    if not player or player == LP then
+        return false
+    end
+    
+    local currentTime = tick()
+    
+    -- Verificar cache
+    if EnemyCache[player.UserId] then
+        local cached = EnemyCache[player.UserId]
+        -- Si el cache tiene menos de 2 segundos, usarlo
+        if currentTime - cached.timestamp < ENEMY_CACHE_TIMEOUT then
+            return cached.isEnemy
+        end
+    end
+    
+    -- Actualizar verificación de team
+    local isEnemy = false
+    
+    -- Método 1: Verificar team diferente
+    if LP.Team and player.Team then
+        isEnemy = (LP.Team ~= player.Team)
+    else
+        -- Método 2: Si no hay teams, verificar herramientas peligrosas
+        local character = player.Character
+        if character then
+            local dangerousKeywords = {"sword", "gun", "rifle", "knife", "blade", "weapon", "espada", "pistola", "cuchillo", "sable"}
+            
+            for _, child in pairs(character:GetChildren()) do
+                if child:IsA("Tool") then
+                    local toolName = child.Name:lower()
+                    for _, keyword in ipairs(dangerousKeywords) do
+                        if toolName:find(keyword) then
+                            isEnemy = true
+                            break
+                        end
+                    end
+                    if isEnemy then break end
+                end
+            end
+        end
+    end
+    
+    -- Guardar en cache
+    EnemyCache[player.UserId] = {
+        isEnemy = isEnemy,
+        timestamp = currentTime
+    }
+    
+    return isEnemy
 end
 
--- Función para orientar el personaje hacia el enemigo
-local function FaceEnemy(character, enemyPosition)
-    local rootPart = character:FindFirstChild("HumanoidRootPart")
+-- Función para generar posición aleatoria de esquive (OPTIMIZADA)
+local function GetRandomDodgePosition(currentPosition, threatPosition)
+    -- Calcular vector de alejamiento desde la amenaza
+    local awayVector = (currentPosition - threatPosition).Unit
+    
+    -- Generar ángulo aleatorio (-60 a 60 grados) para variación
+    local randomAngle = math.rad(math.random(-60, 60))
+    
+    -- Rotar el vector de alejamiento
+    local cos = math.cos(randomAngle)
+    local sin = math.sin(randomAngle)
+    local rotatedX = awayVector.X * cos - awayVector.Z * sin
+    local rotatedZ = awayVector.X * sin + awayVector.Z * cos
+    
+    -- Calcular posición final (18 studs alejado)
+    local dodgePosition = currentPosition + Vector3.new(
+        rotatedX * DODGE_TELEPORT_DISTANCE,
+        0, -- Mantener altura similar
+        rotatedZ * DODGE_TELEPORT_DISTANCE
+    )
+    
+    -- Ajustar altura (3 studs arriba para evitar quedar bajo el suelo)
+    dodgePosition = Vector3.new(dodgePosition.X, currentPosition.Y + 3, dodgePosition.Z)
+    
+    return dodgePosition
+end
+
+-- Función para orientar el personaje hacia la amenaza (ULTRA RÁPIDA)
+local function QuickFaceEnemy(rootPart, enemyPosition)
     if not rootPart then return end
     
-    -- Calcular dirección hacia el enemigo
-    local direction = (enemyPosition - rootPart.Position).Unit
-    local lookCFrame = CFrame.new(rootPart.Position, rootPart.Position + direction)
+    -- Calcular dirección SOLO en plano horizontal (más natural)
+    local direction = Vector3.new(
+        enemyPosition.X - rootPart.Position.X,
+        0, -- Ignorar componente Y
+        enemyPosition.Z - rootPart.Position.Z
+    ).Unit
     
-    -- Aplicar rotación manteniendo posición Y
-    rootPart.CFrame = CFrame.new(rootPart.Position.X, rootPart.Position.Y, rootPart.Position.Z) * 
-                      (lookCFrame - lookCFrame.Position)
+    -- Aplicar rotación instantánea
+    local lookCFrame = CFrame.new(rootPart.Position, rootPart.Position + direction)
+    rootPart.CFrame = lookCFrame
 end
 
--- Función principal de Auto-Dodge
-local function AutoDodge()
+-- Función principal de Auto-Dodge (ULTRA OPTIMIZADA)
+local function FastAutoDodge()
     local character = LP.Character
     if not character then return end
     
@@ -635,72 +712,88 @@ local function AutoDodge()
     
     local currentTime = tick()
     
-    -- Cooldown check
+    -- Cooldown check (más rápido)
     if currentTime - LastDodgeTime < DODGE_COOLDOWN then
         return
     end
     
-    -- Escanear enemigos cercanos
-    local enemies = GetNearbyEnemies(DODGE_DETECTION_RANGE)
+    local currentPosition = rootPart.Position
+    local closestThreat = nil
+    local closestDistance = DODGE_DETECTION_RANGE
     
-    if #enemies > 0 then
-        -- Obtener enemigo más cercano
-        local closestEnemy = enemies[1]
-        local enemyPlayer = Players:GetPlayerByUserId(closestEnemy.userId)
-        
-        if enemyPlayer and enemyPlayer.Character then
-            local enemyRoot = enemyPlayer.Character:FindFirstChild("HumanoidRootPart")
+    -- Escaneo ultra rápido de enemigos cercanos
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            local enemyRoot = player.Character:FindFirstChild("HumanoidRootPart")
             
             if enemyRoot then
-                -- Obtener dirección hacia donde mira el enemigo
-                local enemyLookVector = enemyRoot.CFrame.LookVector
-                local enemyPosition = enemyRoot.Position
+                local distance = (currentPosition - enemyRoot.Position).Magnitude
                 
-                -- Calcular posición detrás del enemigo
-                local dodgePosition = GetPositionBehindEnemy(enemyPosition, enemyLookVector)
-                
-                -- Ajustar altura para evitar quedar bajo el suelo
-                dodgePosition = Vector3.new(dodgePosition.X, dodgePosition.Y + 3, dodgePosition.Z)
-                
-                -- Teleportar
-                rootPart.CFrame = CFrame.new(dodgePosition)
-                
-                -- Orientar hacia el enemigo
-                task.wait(0.05) -- Pequeña espera para estabilizar
-                FaceEnemy(character, enemyPosition)
-                
-                -- Actualizar timestamp
-                LastDodgeTime = currentTime
-                
-                print("[Lux Auto-Dodge] Esquivó a:", closestEnemy.name, "| Distancia original:", closestEnemy.distance)
+                -- Solo verificar si está dentro del rango
+                if distance <= DODGE_DETECTION_RANGE then
+                    -- Verificar si es enemigo (con cache optimizado)
+                    if IsRealEnemy(player) then
+                        if distance < closestDistance then
+                            closestDistance = distance
+                            closestThreat = enemyRoot.Position
+                        end
+                    end
+                end
             end
+        end
+    end
+    
+    -- Si hay amenaza, esquivar INMEDIATAMENTE
+    if closestThreat then
+        -- Generar posición aleatoria de esquive
+        local dodgePosition = GetRandomDodgePosition(currentPosition, closestThreat)
+        
+        -- Teleportación INSTANTÁNEA
+        rootPart.CFrame = CFrame.new(dodgePosition)
+        
+        -- Orientar hacia la amenaza (sin delay)
+        QuickFaceEnemy(rootPart, closestThreat)
+        
+        -- Actualizar timestamp
+        LastDodgeTime = currentTime
+        
+        print("[Lux Auto-Dodge] Esquivó - Distancia:", math.floor(closestDistance), "studs")
+    end
+end
+
+-- Función para limpiar cache de enemigos periódicamente
+local function CleanEnemyCache()
+    local currentTime = tick()
+    for userId, data in pairs(EnemyCache) do
+        if currentTime - data.timestamp > ENEMY_CACHE_TIMEOUT * 2 then
+            EnemyCache[userId] = nil
         end
     end
 end
 
--- Función para activar Auto-Dodge
+-- Función para activar Auto-Dodge (OPTIMIZADA)
 local function EnableAutoDodge()
     if AutoDodgeEnabled then
-        return false, "Auto-Dodge ya está activo"
+        return false, "Auto-Dodge ya esta activo"
     end
     
     AutoDodgeEnabled = true
     
-    -- Loop de detección continua
+    -- Loop de detección ULTRA RÁPIDO usando Heartbeat (60 FPS)
     DodgeConnection = game:GetService("RunService").Heartbeat:Connect(function()
         if AutoDodgeEnabled and LP.Character then
-            AutoDodge()
+            FastAutoDodge()
         end
     end)
     
-    print("[Lux] Auto-Dodge ACTIVADO")
-    return true, "Auto-Dodge activado - Te teletransportarás detrás de enemigos cercanos"
+    print("[Lux] Auto-Dodge ACTIVADO - Deteccion: 12 studs | Esquive: 18 studs")
+    return true, "Auto-Dodge activo 12s 18m"
 end
 
 -- Función para desactivar Auto-Dodge
 local function DisableAutoDodge()
     if not AutoDodgeEnabled then
-        return false, "Auto-Dodge no está activo"
+        return false, "Auto-Dodge no esta activo"
     end
     
     AutoDodgeEnabled = false
@@ -709,6 +802,9 @@ local function DisableAutoDodge()
         DodgeConnection:Disconnect()
         DodgeConnection = nil
     end
+    
+    -- Limpiar cache
+    EnemyCache = {}
     
     print("[Lux] Auto-Dodge DESACTIVADO")
     return true, "Auto-Dodge desactivado"
@@ -2849,6 +2945,17 @@ UpdateEnemyHighlights()
 end
 end
 end)
+
+-- Limpieza periódica del cache de enemigos (cada 5 segundos)
+task.spawn(function()
+    while ScreenGui.Parent do
+        task.wait(5)
+        if AutoDodgeEnabled then
+            CleanEnemyCache()
+        end
+    end
+end)
+
 print("[Lux] API System loaded")
 print("[Lux] Chat system initialized")
 print("[Lux] Mode: " .. (PRIVATE_MODE and "PRIVATE (Owner Only)" or "PUBLIC"))
