@@ -600,9 +600,9 @@ end
 local AutoDodgeEnabled = false
 local DodgeConnection = nil
 local LastDodgeTime = 0
-local DODGE_COOLDOWN = 0.15 -- Cooldown MÁS RÁPIDO entre dodges
-local DODGE_DETECTION_RANGE = 12 -- Studs para detectar enemigo (AUMENTADO)
-local DODGE_TELEPORT_DISTANCE = 18 -- Studs de alejamiento (AUMENTADO)
+local DODGE_COOLDOWN = 0.09 -- Cooldown MÁS RÁPIDO entre dodges
+local DODGE_DETECTION_RANGE = 16 -- Studs para detectar enemigo (AUMENTADO)
+local DODGE_TELEPORT_DISTANCE = 24 -- Studs de alejamiento (AUMENTADO)
 local EnemyCache = {} -- Cache de enemigos con timestamp
 local ENEMY_CACHE_TIMEOUT = 2 -- Segundos antes de re-verificar team
 
