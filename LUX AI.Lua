@@ -279,6 +279,10 @@ local BusyStartTime = 0
 -- Variables UI
 local ScreenGui, AuthFrame, MainFrame, StatusIndicator, APIKeyBox, ValidateButton, ToggleButton, ConsoleLabel, ShowButton
 local VALIDATION_FILE_NAME = "Lux_Validation.txt"
+-- Variables para Modo Complex
+local ComplexMode = false
+local ComplexHUD = nil
+local HUDUpdateConnection = nil
 -- ⬇️ PEGA AQUÍ:
 local PRIVATE_MODE = true -- true = solo el dueño puede hablar
 local scriptOwner = LP -- El jugador que ejecuta el script
@@ -1508,6 +1512,411 @@ MainFrame.Visible = false
 if callback then callback() end
 end)
 end
+
+-- ============================================
+-- MODO COMPLEX - HUD TIPO IRON MAN
+-- ============================================
+
+local function CreateComplexHUD()
+    -- Frame principal del HUD
+    ComplexHUD = Instance.new("Frame")
+    ComplexHUD.Name = "ComplexHUD"
+    ComplexHUD.Size = UDim2.new(0, 420, 0, 550)
+    ComplexHUD.Position = UDim2.new(1, -440, 0.5, -275)
+    ComplexHUD.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    ComplexHUD.BackgroundTransparency = 0.15
+    ComplexHUD.BorderSizePixel = 0
+    ComplexHUD.Visible = false
+    ComplexHUD.Parent = ScreenGui
+    
+    local hudCorner = Instance.new("UICorner")
+    hudCorner.CornerRadius = UDim.new(0, 12)
+    hudCorner.Parent = ComplexHUD
+    
+    -- Borde brillante
+    local hudStroke = Instance.new("UIStroke")
+    hudStroke.Color = Color3.fromRGB(0, 150, 255)
+    hudStroke.Thickness = 2
+    hudStroke.Transparency = 0.3
+    hudStroke.Parent = ComplexHUD
+    
+    MakeDraggable(ComplexHUD)
+    
+    -- Header
+    local header = Instance.new("Frame")
+    header.Size = UDim2.new(1, 0, 0, 50)
+    header.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+    header.BackgroundTransparency = 0.3
+    header.BorderSizePixel = 0
+    header.Parent = ComplexHUD
+    
+    local headerCorner = Instance.new("UICorner")
+    headerCorner.CornerRadius = UDim.new(0, 12)
+    headerCorner.Parent = header
+    
+    local headerTitle = Instance.new("TextLabel")
+    headerTitle.Size = UDim2.new(1, -60, 1, 0)
+    headerTitle.Position = UDim2.new(0, 15, 0, 0)
+    headerTitle.BackgroundTransparency = 1
+    headerTitle.Text = "⚡ LUX COMPLEX MODE"
+    headerTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+    headerTitle.Font = Enum.Font.GothamBold
+    headerTitle.TextSize = 18
+    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+    headerTitle.Parent = header
+    
+    -- Botón cerrar HUD
+    local closeHUD = Instance.new("TextButton")
+    closeHUD.Size = UDim2.new(0, 30, 0, 30)
+    closeHUD.Position = UDim2.new(1, -40, 0, 10)
+    closeHUD.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+    closeHUD.Text = "✕"
+    closeHUD.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeHUD.Font = Enum.Font.GothamBold
+    closeHUD.TextSize = 16
+    closeHUD.Parent = header
+    
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 6)
+    closeCorner.Parent = closeHUD
+    
+    closeHUD.MouseButton1Click:Connect(function()
+        ComplexMode = false
+        ComplexHUD.Visible = false
+        if HUDUpdateConnection then
+            HUDUpdateConnection:Disconnect()
+            HUDUpdateConnection = nil
+        end
+    end)
+    
+    -- ScrollingFrame para contenido
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, -20, 1, -70)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 60)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 6
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1200)
+    scrollFrame.Parent = ComplexHUD
+    
+    -- ============================================
+    -- SECCIÓN 1: ESTADO DEL SISTEMA
+    -- ============================================
+    local function CreateSection(name, yPos)
+        local section = Instance.new("Frame")
+        section.Name = name
+        section.Size = UDim2.new(1, -10, 0, 30)
+        section.Position = UDim2.new(0, 5, 0, yPos)
+        section.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+        section.BackgroundTransparency = 0.7
+        section.BorderSizePixel = 0
+        section.Parent = scrollFrame
+        
+        local sectionCorner = Instance.new("UICorner")
+        sectionCorner.CornerRadius = UDim.new(0, 6)
+        sectionCorner.Parent = section
+        
+        local sectionLabel = Instance.new("TextLabel")
+        sectionLabel.Size = UDim2.new(1, -10, 1, 0)
+        sectionLabel.Position = UDim2.new(0, 10, 0, 0)
+        sectionLabel.BackgroundTransparency = 1
+        sectionLabel.Text = name
+        sectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        sectionLabel.Font = Enum.Font.GothamBold
+        sectionLabel.TextSize = 14
+        sectionLabel.TextXAlignment = Enum.TextXAlignment.Left
+        sectionLabel.Parent = section
+        
+        return section
+    end
+    
+    CreateSection("🔧 SYSTEM STATUS", 5)
+    
+    -- Estado del sistema
+    local systemStatus = Instance.new("TextLabel")
+    systemStatus.Name = "SystemStatus"
+    systemStatus.Size = UDim2.new(1, -20, 0, 80)
+    systemStatus.Position = UDim2.new(0, 10, 0, 45)
+    systemStatus.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    systemStatus.BackgroundTransparency = 0.5
+    systemStatus.BorderSizePixel = 0
+    systemStatus.Text = "Initializing..."
+    systemStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
+    systemStatus.Font = Enum.Font.Code
+    systemStatus.TextSize = 11
+    systemStatus.TextXAlignment = Enum.TextXAlignment.Left
+    systemStatus.TextYAlignment = Enum.TextYAlignment.Top
+    systemStatus.Parent = scrollFrame
+    
+    local statusCorner = Instance.new("UICorner")
+    statusCorner.CornerRadius = UDim.new(0, 6)
+    statusCorner.Parent = systemStatus
+    
+    local statusPadding = Instance.new("UIPadding")
+    statusPadding.PaddingLeft = UDim.new(0, 8)
+    statusPadding.PaddingTop = UDim.new(0, 8)
+    statusPadding.Parent = systemStatus
+    
+    -- ============================================
+    -- SECCIÓN 2: ENVIRONMENT DATA
+    -- ============================================
+    CreateSection("🌍 ENVIRONMENT", 135)
+    
+    local envData = Instance.new("TextLabel")
+    envData.Name = "EnvData"
+    envData.Size = UDim2.new(1, -20, 0, 100)
+    envData.Position = UDim2.new(0, 10, 0, 175)
+    envData.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    envData.BackgroundTransparency = 0.5
+    envData.BorderSizePixel = 0
+    envData.Text = "Scanning..."
+    envData.TextColor3 = Color3.fromRGB(200, 200, 200)
+    envData.Font = Enum.Font.Code
+    envData.TextSize = 11
+    envData.TextXAlignment = Enum.TextXAlignment.Left
+    envData.TextYAlignment = Enum.TextYAlignment.Top
+    envData.Parent = scrollFrame
+    
+    local envCorner = Instance.new("UICorner")
+    envCorner.CornerRadius = UDim.new(0, 6)
+    envCorner.Parent = envData
+    
+    local envPadding = Instance.new("UIPadding")
+    envPadding.PaddingLeft = UDim.new(0, 8)
+    envPadding.PaddingTop = UDim.new(0, 8)
+    envPadding.Parent = envData
+    
+    -- ============================================
+    -- SECCIÓN 3: ENEMY DETECTION
+    -- ============================================
+    CreateSection("⚔️ HOSTILE DETECTION", 285)
+    
+    local enemyList = Instance.new("TextLabel")
+    enemyList.Name = "EnemyList"
+    enemyList.Size = UDim2.new(1, -20, 0, 120)
+    enemyList.Position = UDim2.new(0, 10, 0, 325)
+    enemyList.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    enemyList.BackgroundTransparency = 0.5
+    enemyList.BorderSizePixel = 0
+    enemyList.Text = "No threats detected"
+    enemyList.TextColor3 = Color3.fromRGB(100, 255, 100)
+    enemyList.Font = Enum.Font.Code
+    enemyList.TextSize = 11
+    enemyList.TextXAlignment = Enum.TextXAlignment.Left
+    enemyList.TextYAlignment = Enum.TextYAlignment.Top
+    enemyList.Parent = scrollFrame
+    
+    local enemyCorner = Instance.new("UICorner")
+    enemyCorner.CornerRadius = UDim.new(0, 6)
+    enemyCorner.Parent = enemyList
+    
+    local enemyPadding = Instance.new("UIPadding")
+    enemyPadding.PaddingLeft = UDim.new(0, 8)
+    enemyPadding.PaddingTop = UDim.new(0, 8)
+    enemyPadding.Parent = enemyList
+    
+    -- ============================================
+    -- SECCIÓN 4: QUICK ACTIONS
+    -- ============================================
+    CreateSection("⚡ QUICK ACTIONS", 455)
+    
+    local function CreateActionButton(text, yPos, color, callback)
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(0.48, 0, 0, 40)
+        btn.Position = UDim2.new((yPos % 2 == 0) and 0.02 or 0.5, 0, 0, 495 + math.floor(yPos / 2) * 50)
+        btn.BackgroundColor3 = color
+        btn.Text = text
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 11
+        btn.Parent = scrollFrame
+        
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.Parent = btn
+        
+        btn.MouseButton1Click:Connect(callback)
+        
+        return btn
+    end
+    
+    -- Botones de acciones (solo modo privado)
+    local btnAutoDodge = CreateActionButton("🛡️ AUTO-DODGE", 0, Color3.fromRGB(220, 60, 60), function()
+        if not PRIVATE_MODE then return end
+        if IsAutoDodgeActive() then
+            DisableAutoDodge()
+            btnAutoDodge.Text = "🛡️ AUTO-DODGE"
+            btnAutoDodge.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
+        else
+            EnableAutoDodge()
+            btnAutoDodge.Text = "🛡️ DODGE: ON"
+            btnAutoDodge.BackgroundColor3 = Color3.fromRGB(60, 220, 100)
+        end
+    end)
+    
+    local btnHighlight = CreateActionButton("👁️ HIGHLIGHT", 1, Color3.fromRGB(255, 140, 0), function()
+        if not PRIVATE_MODE then return end
+        UpdateEnemyHighlights()
+        btnHighlight.Text = "✓ UPDATED"
+        task.wait(1)
+        btnHighlight.Text = "👁️ HIGHLIGHT"
+    end)
+    
+    local btnGrip = CreateActionButton("🤜 GRIP", 2, Color3.fromRGB(80, 160, 255), function()
+        if not PRIVATE_MODE then return end
+        SafeExecuteScript("https://pastebin.com/raw/cCRTZzbP ")
+    end)
+    
+    local btnGod = CreateActionButton("🛡️ GOD MODE", 3, Color3.fromRGB(255, 200, 0), function()
+        if not PRIVATE_MODE then return end
+        SafeExecuteScript("https://pastebin.com/raw/3QRfTGkG ")
+    end)
+    
+    local btnFly = CreateActionButton("🚀 FLY", 4, Color3.fromRGB(100, 200, 255), function()
+        if not PRIVATE_MODE then return end
+        SafeExecuteScript("https://pastebin.com/raw/GjCJ5e8u ")
+    end)
+    
+    local btnInfYield = CreateActionButton("⚙️ INF YIELD", 5, Color3.fromRGB(150, 80, 200), function()
+        if not PRIVATE_MODE then return end
+        SafeExecuteScript("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source ")
+    end)
+    
+    local btnScan = CreateActionButton("🗺️ SCAN MAP", 6, Color3.fromRGB(60, 180, 120), function()
+        if not PRIVATE_MODE then return end
+        ScanMapObjects()
+        btnScan.Text = "✓ " .. #ScannedObjects .. " OBJS"
+        task.wait(2)
+        btnScan.Text = "🗺️ SCAN MAP"
+    end)
+    
+    local btnClearHighlight = CreateActionButton("🧹 CLEAR HL", 7, Color3.fromRGB(180, 60, 120), function()
+        if not PRIVATE_MODE then return end
+        ClearAllHighlights()
+    end)
+    
+    -- Actualizar estado de botones si no es privado
+    if not PRIVATE_MODE then
+        for _, btn in pairs(scrollFrame:GetChildren()) do
+            if btn:IsA("TextButton") then
+                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+                btn.Text = "🔒 PRIVATE ONLY"
+            end
+        end
+    end
+    
+    return ComplexHUD
+end
+
+-- Función para actualizar datos del HUD en tiempo real
+local function UpdateComplexHUD()
+    if not ComplexHUD or not ComplexHUD.Visible then return end
+    
+    local scrollFrame = ComplexHUD:FindFirstChild("ScrollingFrame")
+    if not scrollFrame then return end
+    
+    -- Actualizar estado del sistema
+    local systemStatus = scrollFrame:FindFirstChild("SystemStatus")
+    if systemStatus then
+        local statusText = string.format(
+            "AI: %s | API: %s\nMode: %s | Provider: %s\nAuto-Dodge: %s",
+            Settings.AI_Enabled and "ONLINE" or "OFFLINE",
+            _G.LuxAPIReady and "READY" or "NOT READY",
+            PRIVATE_MODE and "PRIVATE" or "PUBLIC",
+            API_PROVIDER:upper(),
+            IsAutoDodgeActive() and "ACTIVE" or "INACTIVE"
+        )
+        systemStatus.Text = statusText
+    end
+    
+    -- Actualizar datos del entorno
+    local envData = scrollFrame:FindFirstChild("EnvData")
+    if envData then
+        local env = ScanEnvironment()
+        if env then
+            local envText = string.format(
+                "Health: %d/%d | Alive: %s\nPlayers: %d total | %d nearby\nGame: %s\nTime: %s",
+                env.owner.health,
+                env.owner.maxHealth,
+                env.owner.isAlive and "YES" or "NO",
+                env.totalPlayers,
+                env.playersNearby,
+                env.gameName or "Unknown",
+                os.date("%H:%M:%S")
+            )
+            envData.Text = envText
+        end
+    end
+    
+    -- Actualizar lista de enemigos
+    local enemyList = scrollFrame:FindFirstChild("EnemyList")
+    if enemyList then
+        local enemies = GetNearbyEnemies(50)
+        
+        if #enemies == 0 then
+            enemyList.Text = "No threats detected"
+            enemyList.TextColor3 = Color3.fromRGB(100, 255, 100)
+        else
+            local enemyText = string.format("⚠️ %d HOSTILE(S) DETECTED:\n\n", #enemies)
+            
+            for i, enemy in ipairs(enemies) do
+                if i <= 5 then -- Máximo 5 enemigos en lista
+                    enemyText = enemyText .. string.format(
+                        "%d. %s\n   %dm | HP: %d/%d\n",
+                        i,
+                        enemy.name,
+                        enemy.distance,
+                        enemy.health,
+                        enemy.maxHealth
+                    )
+                end
+            end
+            
+            if #enemies > 5 then
+                enemyText = enemyText .. string.format("\n+ %d more...", #enemies - 5)
+            end
+            
+            enemyList.Text = enemyText
+            enemyList.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+    end
+end
+
+-- Función para activar/desactivar Modo Complex
+local function ToggleComplexMode()
+    ComplexMode = not ComplexMode
+    
+    if ComplexMode then
+        -- Crear HUD si no existe
+        if not ComplexHUD then
+            CreateComplexHUD()
+        end
+        
+        ComplexHUD.Visible = true
+        
+        -- Iniciar actualización continua
+        HUDUpdateConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            UpdateComplexHUD()
+        end)
+        
+        print("[Lux] Complex Mode ACTIVADO")
+    else
+        if ComplexHUD then
+            ComplexHUD.Visible = false
+        end
+        
+        if HUDUpdateConnection then
+            HUDUpdateConnection:Disconnect()
+            HUDUpdateConnection = nil
+        end
+        
+        print("[Lux] Complex Mode DESACTIVADO")
+    end
+    
+    return ComplexMode
+end
+
 -- ============================================
 -- CREAR UI MODERNA CON SISTEMA DE DOS FASES
 -- ============================================
@@ -1772,6 +2181,27 @@ clearHistoryButton.Text = "✓ DONE"
 task.wait(1)
 clearHistoryButton.Text = "🗑️ CLEAR"
 end)
+
+local complexModeButton = Instance.new("TextButton")
+complexModeButton.Size = UDim2.new(0.9, 0, 0, 35)
+complexModeButton.Position = UDim2.new(0.05, 0, 0.88, 0)
+complexModeButton.BackgroundColor3 = Color3.fromRGB(100, 60, 200)
+complexModeButton.Text = "🤖 COMPLEX MODE"
+complexModeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+complexModeButton.Font = Enum.Font.GothamBold
+complexModeButton.TextSize = 12
+complexModeButton.Parent = MainFrame
+
+local complexCorner = Instance.new("UICorner")
+complexCorner.CornerRadius = UDim.new(0, 8)
+complexCorner.Parent = complexModeButton
+
+complexModeButton.MouseButton1Click:Connect(function()
+    local isActive = ToggleComplexMode()
+    complexModeButton.Text = isActive and "🤖 COMPLEX: ON" or "🤖 COMPLEX MODE"
+    complexModeButton.BackgroundColor3 = isActive and Color3.fromRGB(60, 220, 100) or Color3.fromRGB(100, 60, 200)
+end)
+
 ConsoleLabel = Instance.new("TextLabel")
 ConsoleLabel.Name = "ConsoleLabel"
 ConsoleLabel.Size = UDim2.new(0.9, 0, 0, 15)
@@ -2833,6 +3263,24 @@ end
 end
 return
 end
+
+-- Comando especial: activar Complex Mode
+if userMessage:lower() == "complex" or userMessage:lower() == "modo complex" or userMessage:lower() == "hud" then
+    local canUse, remaining = CanUseCommand(userId, "complex")
+    if not canUse then
+        SendChatMessage("Espera " .. remaining .. "s ⏳")
+        return
+    end
+    
+    local isActive = ToggleComplexMode()
+    if isActive then
+        SendChatMessage("✅ Complex Mode activado - HUD visible")
+    else
+        SendChatMessage("🛑 Complex Mode desactivado")
+    end
+    return
+end
+
 -- Comando especial: debug de entorno (solo modo privado)
 if PRIVATE_MODE and userMessage:lower() == "debug" then
 DebugEnvironmentData()
