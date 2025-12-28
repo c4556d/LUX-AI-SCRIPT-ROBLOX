@@ -376,7 +376,7 @@ end
 -- SISTEMA DE HIGHLIGHTS PARA ENEMIGOS
 -- ============================================
 local ActiveHighlights = {} -- {[UserId] = Highlight instance}
--- Función para crear highlight en un enemigo
+-- Función para crear highlight en un enemigo (CON TIMER DE 5 SEGUNDOS)
 local function HighlightEnemy(player)
 if not player or not player.Character then return end
 local character = player.Character
@@ -398,6 +398,18 @@ highlight.OutlineTransparency = 0
 highlight.Parent = character
 ActiveHighlights[userId] = highlight
 print("[Lux] Highlighted enemy:", player.Name)
+
+-- ✅ NUEVO: Auto-remover después de 5 segundos
+task.spawn(function()
+    task.wait(5)
+    if ActiveHighlights[userId] and ActiveHighlights[userId] == highlight then
+        pcall(function()
+            highlight:Destroy()
+        end)
+        ActiveHighlights[userId] = nil
+        print("[Lux] Enemy highlight auto-removed:", player.Name)
+    end
+end)
 end
 -- Función para remover todos los highlights
 local function ClearAllHighlights()
@@ -1760,13 +1772,15 @@ PERSONALITY:
 - You can SEE the game environment and player locations
 ENVIRONMENT AWARENESS:
 - You receive REAL-TIME data from the game in JSON format
+- ONLY use information from the JSON data provided
 - NEVER invent player names, positions, or health values
 - If no players are nearby, say "no hay nadie cerca"
-- If server is empty, say "estamos solos en el servidor"
-- You can only describe what you ACTUALLY SEE in the data
-- When users ask "where is X?", check the REAL data first
-- Examples: "Según mis sensores, Juan está a 45 studs" (if data shows it)
+- If total_players is 0, the server is EMPTY - say "estamos solos en el servidor"
+- You can ONLY describe what EXISTS in the JSON data
+- When users ask "where is X?", check the REAL JSON data first
+- DO NOT use example data like "Juan" - these are NOT real players
 - CRITICAL: If player count is 0, there are NO players - don't invent any
+- The JSON data is the ONLY source of truth about the game state
 ENEMY DETECTION:
 - You can detect hostile players nearby
 - Enemies are identified by different team or dangerous tools
@@ -1965,7 +1979,7 @@ if not PRIVATE_MODE and player == scriptOwner then
 print("[Lux DEBUG] Public mode - ignoring owner message (anti-loop)")
 return
 end
--- 🔴 NUEVO: Verificar distancia (máximo 9 studs)
+-- 🔴 NUEVO: Verificar distancia (máximo 15 studs)
 local ownerChar = scriptOwner.Character
 local playerChar = player.Character
 if ownerChar and playerChar then
@@ -1973,8 +1987,8 @@ local ownerRoot = ownerChar:FindFirstChild("HumanoidRootPart")
 local playerRoot = playerChar:FindFirstChild("HumanoidRootPart")
 if ownerRoot and playerRoot then
 local distance = (ownerRoot.Position - playerRoot.Position).Magnitude
-if distance > 9 then
-print("[Lux DEBUG] Player too far:", math.floor(distance), "studs (max: 9)")
+if distance > 15 then
+print("[Lux DEBUG] Player too far:", math.floor(distance), "studs (max: 15)")
 return
 else
 print("[Lux DEBUG] Player in range:", math.floor(distance), "studs")
@@ -2468,4 +2482,4 @@ print("[Lux] Say 'adios' to end conversation | 'lux olvida' to clear history")
 print("[Lux] Get your API key: https://aistudio.google.com/app/apikey")
 print("[Lux] Now supports both Gemini and Groq APIs!")
 print("[Lux] New features: Individual memory per user, dancing, following, and improved environment awareness!")
-print("[Lux] DISTANCE FILTER - Only responds to players within 9 studs!")
+print("[Lux] DISTANCE FILTER - Only responds to players within 15 studs!")
