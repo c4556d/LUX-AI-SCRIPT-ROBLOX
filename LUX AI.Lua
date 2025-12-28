@@ -1514,297 +1514,617 @@ end)
 end
 
 -- ============================================
--- MODO COMPLEX - HUD TIPO IRON MAN
+-- MODO COMPLEX - HUD TIPO JARVIS (REORGANIZADO)
 -- ============================================
 
+-- Variables globales para el chat con Lux
+local ComplexChatHistory = {}
+local ComplexChatInput = nil
+local ComplexChatDisplay = nil
+
 local function CreateComplexHUD()
-    -- Frame principal del HUD
+    -- ============================================
+    -- CONTENEDOR PRINCIPAL (Invisible, solo para agrupar)
+    -- ============================================
     ComplexHUD = Instance.new("Frame")
     ComplexHUD.Name = "ComplexHUD"
-    ComplexHUD.Size = UDim2.new(0, 420, 0, 550)
-    ComplexHUD.Position = UDim2.new(1, -440, 0.5, -275)
-    ComplexHUD.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
-    ComplexHUD.BackgroundTransparency = 0.15
+    ComplexHUD.Size = UDim2.new(1, 0, 1, 0)
+    ComplexHUD.Position = UDim2.new(0, 0, 0, 0)
+    ComplexHUD.BackgroundTransparency = 1
     ComplexHUD.BorderSizePixel = 0
     ComplexHUD.Visible = false
     ComplexHUD.Parent = ScreenGui
     
-    local hudCorner = Instance.new("UICorner")
-    hudCorner.CornerRadius = UDim.new(0, 12)
-    hudCorner.Parent = ComplexHUD
-    
-    -- Borde brillante
-    local hudStroke = Instance.new("UIStroke")
-    hudStroke.Color = Color3.fromRGB(0, 150, 255)
-    hudStroke.Thickness = 2
-    hudStroke.Transparency = 0.3
-    hudStroke.Parent = ComplexHUD
-    
-    MakeDraggable(ComplexHUD)
-    
-    -- Header
-    local header = Instance.new("Frame")
-    header.Size = UDim2.new(1, 0, 0, 50)
-    header.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
-    header.BackgroundTransparency = 0.3
-    header.BorderSizePixel = 0
-    header.Parent = ComplexHUD
-    
-    local headerCorner = Instance.new("UICorner")
-    headerCorner.CornerRadius = UDim.new(0, 12)
-    headerCorner.Parent = header
-    
-    local headerTitle = Instance.new("TextLabel")
-    headerTitle.Size = UDim2.new(1, -60, 1, 0)
-    headerTitle.Position = UDim2.new(0, 15, 0, 0)
-    headerTitle.BackgroundTransparency = 1
-    headerTitle.Text = "⚡ LUX COMPLEX MODE"
-    headerTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
-    headerTitle.Font = Enum.Font.GothamBold
-    headerTitle.TextSize = 18
-    headerTitle.TextXAlignment = Enum.TextXAlignment.Left
-    headerTitle.Parent = header
-    
-    -- Botón cerrar HUD
-    local closeHUD = Instance.new("TextButton")
-    closeHUD.Size = UDim2.new(0, 30, 0, 30)
-    closeHUD.Position = UDim2.new(1, -40, 0, 10)
-    closeHUD.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-    closeHUD.Text = "✕"
-    closeHUD.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeHUD.Font = Enum.Font.GothamBold
-    closeHUD.TextSize = 16
-    closeHUD.Parent = header
-    
-    local closeCorner = Instance.new("UICorner")
-    closeCorner.CornerRadius = UDim.new(0, 6)
-    closeCorner.Parent = closeHUD
-    
-    closeHUD.MouseButton1Click:Connect(function()
-        ComplexMode = false
-        ComplexHUD.Visible = false
-        if HUDUpdateConnection then
-            HUDUpdateConnection:Disconnect()
-            HUDUpdateConnection = nil
-        end
-    end)
-    
-    -- ScrollingFrame para contenido
-    local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -20, 1, -70)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 60)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 1200)
-    scrollFrame.Parent = ComplexHUD
-    
     -- ============================================
-    -- SECCIÓN 1: ESTADO DEL SISTEMA
+    -- PANEL 1: SCRIPTS (Esquina Superior Izquierda)
     -- ============================================
-    local function CreateSection(name, yPos)
-        local section = Instance.new("Frame")
-        section.Name = name
-        section.Size = UDim2.new(1, -10, 0, 30)
-        section.Position = UDim2.new(0, 5, 0, yPos)
-        section.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
-        section.BackgroundTransparency = 0.7
-        section.BorderSizePixel = 0
-        section.Parent = scrollFrame
-        
-        local sectionCorner = Instance.new("UICorner")
-        sectionCorner.CornerRadius = UDim.new(0, 6)
-        sectionCorner.Parent = section
-        
-        local sectionLabel = Instance.new("TextLabel")
-        sectionLabel.Size = UDim2.new(1, -10, 1, 0)
-        sectionLabel.Position = UDim2.new(0, 10, 0, 0)
-        sectionLabel.BackgroundTransparency = 1
-        sectionLabel.Text = name
-        sectionLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        sectionLabel.Font = Enum.Font.GothamBold
-        sectionLabel.TextSize = 14
-        sectionLabel.TextXAlignment = Enum.TextXAlignment.Left
-        sectionLabel.Parent = section
-        
-        return section
-    end
+    local scriptsPanel = Instance.new("Frame")
+    scriptsPanel.Name = "ScriptsPanel"
+    scriptsPanel.Size = UDim2.new(0, 280, 0, 320)
+    scriptsPanel.Position = UDim2.new(0, 20, 0, 20)
+    scriptsPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    scriptsPanel.BackgroundTransparency = 0.15
+    scriptsPanel.BorderSizePixel = 0
+    scriptsPanel.Parent = ComplexHUD
     
-    CreateSection("🔧 SYSTEM STATUS", 5)
+    local scriptsCorner = Instance.new("UICorner")
+    scriptsCorner.CornerRadius = UDim.new(0, 12)
+    scriptsCorner.Parent = scriptsPanel
     
-    -- Estado del sistema
-    local systemStatus = Instance.new("TextLabel")
-    systemStatus.Name = "SystemStatus"
-    systemStatus.Size = UDim2.new(1, -20, 0, 80)
-    systemStatus.Position = UDim2.new(0, 10, 0, 45)
-    systemStatus.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    systemStatus.BackgroundTransparency = 0.5
-    systemStatus.BorderSizePixel = 0
-    systemStatus.Text = "Initializing..."
-    systemStatus.TextColor3 = Color3.fromRGB(200, 200, 200)
-    systemStatus.Font = Enum.Font.Code
-    systemStatus.TextSize = 11
-    systemStatus.TextXAlignment = Enum.TextXAlignment.Left
-    systemStatus.TextYAlignment = Enum.TextYAlignment.Top
-    systemStatus.Parent = scrollFrame
+    local scriptsStroke = Instance.new("UIStroke")
+    scriptsStroke.Color = Color3.fromRGB(255, 140, 0)
+    scriptsStroke.Thickness = 2
+    scriptsStroke.Transparency = 0.3
+    scriptsStroke.Parent = scriptsPanel
     
-    local statusCorner = Instance.new("UICorner")
-    statusCorner.CornerRadius = UDim.new(0, 6)
-    statusCorner.Parent = systemStatus
+    -- Header del panel
+    local scriptsHeader = Instance.new("Frame")
+    scriptsHeader.Size = UDim2.new(1, 0, 0, 40)
+    scriptsHeader.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+    scriptsHeader.BackgroundTransparency = 0.3
+    scriptsHeader.BorderSizePixel = 0
+    scriptsHeader.Parent = scriptsPanel
     
-    local statusPadding = Instance.new("UIPadding")
-    statusPadding.PaddingLeft = UDim.new(0, 8)
-    statusPadding.PaddingTop = UDim.new(0, 8)
-    statusPadding.Parent = systemStatus
+    local scriptsHeaderCorner = Instance.new("UICorner")
+    scriptsHeaderCorner.CornerRadius = UDim.new(0, 12)
+    scriptsHeaderCorner.Parent = scriptsHeader
     
-    -- ============================================
-    -- SECCIÓN 2: ENVIRONMENT DATA
-    -- ============================================
-    CreateSection("🌍 ENVIRONMENT", 135)
+    local scriptsTitle = Instance.new("TextLabel")
+    scriptsTitle.Size = UDim2.new(1, -20, 1, 0)
+    scriptsTitle.Position = UDim2.new(0, 10, 0, 0)
+    scriptsTitle.BackgroundTransparency = 1
+    scriptsTitle.Text = "⚙️ SCRIPT EXECUTION"
+    scriptsTitle.TextColor3 = Color3.fromRGB(255, 200, 100)
+    scriptsTitle.Font = Enum.Font.GothamBold
+    scriptsTitle.TextSize = 14
+    scriptsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    scriptsTitle.Parent = scriptsHeader
     
-    local envData = Instance.new("TextLabel")
-    envData.Name = "EnvData"
-    envData.Size = UDim2.new(1, -20, 0, 100)
-    envData.Position = UDim2.new(0, 10, 0, 175)
-    envData.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    envData.BackgroundTransparency = 0.5
-    envData.BorderSizePixel = 0
-    envData.Text = "Scanning..."
-    envData.TextColor3 = Color3.fromRGB(200, 200, 200)
-    envData.Font = Enum.Font.Code
-    envData.TextSize = 11
-    envData.TextXAlignment = Enum.TextXAlignment.Left
-    envData.TextYAlignment = Enum.TextYAlignment.Top
-    envData.Parent = scrollFrame
-    
-    local envCorner = Instance.new("UICorner")
-    envCorner.CornerRadius = UDim.new(0, 6)
-    envCorner.Parent = envData
-    
-    local envPadding = Instance.new("UIPadding")
-    envPadding.PaddingLeft = UDim.new(0, 8)
-    envPadding.PaddingTop = UDim.new(0, 8)
-    envPadding.Parent = envData
-    
-    -- ============================================
-    -- SECCIÓN 3: ENEMY DETECTION
-    -- ============================================
-    CreateSection("⚔️ HOSTILE DETECTION", 285)
-    
-    local enemyList = Instance.new("TextLabel")
-    enemyList.Name = "EnemyList"
-    enemyList.Size = UDim2.new(1, -20, 0, 120)
-    enemyList.Position = UDim2.new(0, 10, 0, 325)
-    enemyList.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
-    enemyList.BackgroundTransparency = 0.5
-    enemyList.BorderSizePixel = 0
-    enemyList.Text = "No threats detected"
-    enemyList.TextColor3 = Color3.fromRGB(100, 255, 100)
-    enemyList.Font = Enum.Font.Code
-    enemyList.TextSize = 11
-    enemyList.TextXAlignment = Enum.TextXAlignment.Left
-    enemyList.TextYAlignment = Enum.TextYAlignment.Top
-    enemyList.Parent = scrollFrame
-    
-    local enemyCorner = Instance.new("UICorner")
-    enemyCorner.CornerRadius = UDim.new(0, 6)
-    enemyCorner.Parent = enemyList
-    
-    local enemyPadding = Instance.new("UIPadding")
-    enemyPadding.PaddingLeft = UDim.new(0, 8)
-    enemyPadding.PaddingTop = UDim.new(0, 8)
-    enemyPadding.Parent = enemyList
-    
-    -- ============================================
-    -- SECCIÓN 4: QUICK ACTIONS
-    -- ============================================
-    CreateSection("⚡ QUICK ACTIONS", 455)
-    
-    local function CreateActionButton(text, yPos, color, callback)
+    -- Botones de scripts (2 columnas)
+    local function CreateScriptButton(text, icon, row, col, color, url)
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0.48, 0, 0, 40)
-        btn.Position = UDim2.new((yPos % 2 == 0) and 0.02 or 0.5, 0, 0, 495 + math.floor(yPos / 2) * 50)
+        btn.Size = UDim2.new(0.47, 0, 0, 50)
+        btn.Position = UDim2.new(
+            (col == 1) and 0.03 or 0.50,
+            0,
+            0,
+            50 + (row - 1) * 55
+        )
         btn.BackgroundColor3 = color
-        btn.Text = text
+        btn.Text = icon .. "\n" .. text
         btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 11
-        btn.Parent = scrollFrame
+        btn.TextSize = 10
+        btn.Parent = scriptsPanel
         
         local btnCorner = Instance.new("UICorner")
-        btnCorner.CornerRadius = UDim.new(0, 6)
+        btnCorner.CornerRadius = UDim.new(0, 8)
         btnCorner.Parent = btn
         
-        btn.MouseButton1Click:Connect(callback)
+        if PRIVATE_MODE then
+            btn.MouseButton1Click:Connect(function()
+                SafeExecuteScript(url)
+                btn.Text = "✓ EXECUTED"
+                task.wait(1.5)
+                btn.Text = icon .. "\n" .. text
+            end)
+        else
+            btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+            btn.Text = "🔒\nPRIVATE"
+        end
         
         return btn
     end
     
-    -- Botones de acciones (solo modo privado)
-    local btnAutoDodge = CreateActionButton("🛡️ AUTO-DODGE", 0, Color3.fromRGB(220, 60, 60), function()
-        if not PRIVATE_MODE then return end
-        if IsAutoDodgeActive() then
-            DisableAutoDodge()
-            btnAutoDodge.Text = "🛡️ AUTO-DODGE"
-            btnAutoDodge.BackgroundColor3 = Color3.fromRGB(220, 60, 60)
-        else
-            EnableAutoDodge()
-            btnAutoDodge.Text = "🛡️ DODGE: ON"
-            btnAutoDodge.BackgroundColor3 = Color3.fromRGB(60, 220, 100)
-        end
-    end)
+    CreateScriptButton("GRIP", "🤜", 1, 1, Color3.fromRGB(80, 160, 255), "https://pastebin.com/raw/cCRTZzbP ")
+    CreateScriptButton("GOD MODE", "🛡️", 1, 2, Color3.fromRGB(255, 200, 0), "https://pastebin.com/raw/3QRfTGkG ")
+    CreateScriptButton("FLY", "🚀", 2, 1, Color3.fromRGB(100, 200, 255), "https://pastebin.com/raw/GjCJ5e8u ")
+    CreateScriptButton("INF YIELD", "⚙️", 2, 2, Color3.fromRGB(150, 80, 200), "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source ")
+    CreateScriptButton("NAMELESS", "👤", 3, 1, Color3.fromRGB(200, 100, 200), "https://rawscripts.net/raw/Universal-Script-Nameless-admin-REWORKED-43502 ")
+    CreateScriptButton("SCAN MAP", "🗺️", 3, 2, Color3.fromRGB(60, 180, 120), "")
     
-    local btnHighlight = CreateActionButton("👁️ HIGHLIGHT", 1, Color3.fromRGB(255, 140, 0), function()
-        if not PRIVATE_MODE then return end
-        UpdateEnemyHighlights()
-        btnHighlight.Text = "✓ UPDATED"
-        task.wait(1)
-        btnHighlight.Text = "👁️ HIGHLIGHT"
-    end)
-    
-    local btnGrip = CreateActionButton("🤜 GRIP", 2, Color3.fromRGB(80, 160, 255), function()
-        if not PRIVATE_MODE then return end
-        SafeExecuteScript("https://pastebin.com/raw/cCRTZzbP ")
-    end)
-    
-    local btnGod = CreateActionButton("🛡️ GOD MODE", 3, Color3.fromRGB(255, 200, 0), function()
-        if not PRIVATE_MODE then return end
-        SafeExecuteScript("https://pastebin.com/raw/3QRfTGkG ")
-    end)
-    
-    local btnFly = CreateActionButton("🚀 FLY", 4, Color3.fromRGB(100, 200, 255), function()
-        if not PRIVATE_MODE then return end
-        SafeExecuteScript("https://pastebin.com/raw/GjCJ5e8u ")
-    end)
-    
-    local btnInfYield = CreateActionButton("⚙️ INF YIELD", 5, Color3.fromRGB(150, 80, 200), function()
-        if not PRIVATE_MODE then return end
-        SafeExecuteScript("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source ")
-    end)
-    
-    local btnScan = CreateActionButton("🗺️ SCAN MAP", 6, Color3.fromRGB(60, 180, 120), function()
-        if not PRIVATE_MODE then return end
-        ScanMapObjects()
-        btnScan.Text = "✓ " .. #ScannedObjects .. " OBJS"
-        task.wait(2)
-        btnScan.Text = "🗺️ SCAN MAP"
-    end)
-    
-    local btnClearHighlight = CreateActionButton("🧹 CLEAR HL", 7, Color3.fromRGB(180, 60, 120), function()
-        if not PRIVATE_MODE then return end
-        ClearAllHighlights()
-    end)
-    
-    -- Actualizar estado de botones si no es privado
-    if not PRIVATE_MODE then
-        for _, btn in pairs(scrollFrame:GetChildren()) do
-            if btn:IsA("TextButton") then
-                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-                btn.Text = "🔒 PRIVATE ONLY"
+    -- Botón especial para Scan Map
+    local scanBtn = scriptsPanel:FindFirstChild("TextButton")
+    if scanBtn then
+        for _, btn in pairs(scriptsPanel:GetChildren()) do
+            if btn:IsA("TextButton") and btn.Text:match("SCAN MAP") then
+                btn.MouseButton1Click:Connect(function()
+                    if PRIVATE_MODE then
+                        ScanMapObjects()
+                        btn.Text = "✓ " .. #ScannedObjects
+                        task.wait(1.5)
+                        btn.Text = "🗺️\nSCAN MAP"
+                    end
+                end)
             end
         end
     end
+    
+    -- Estado del modo
+    local modeStatus = Instance.new("TextLabel")
+    modeStatus.Size = UDim2.new(1, -20, 0, 40)
+    modeStatus.Position = UDim2.new(0, 10, 1, -50)
+    modeStatus.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    modeStatus.BackgroundTransparency = 0.5
+    modeStatus.BorderSizePixel = 0
+    modeStatus.Text = "MODE: " .. (PRIVATE_MODE and "PRIVATE" or "PUBLIC") .. "\nAPI: " .. API_PROVIDER:upper()
+    modeStatus.TextColor3 = Color3.fromRGB(255, 200, 100)
+    modeStatus.Font = Enum.Font.Code
+    modeStatus.TextSize = 10
+    modeStatus.Parent = scriptsPanel
+    
+    local modeCorner = Instance.new("UICorner")
+    modeCorner.CornerRadius = UDim.new(0, 6)
+    modeCorner.Parent = modeStatus
+    
+    -- ============================================
+    -- PANEL 2: HEALTH & STATUS (Esquina Superior Derecha)
+    -- ============================================
+    local healthPanel = Instance.new("Frame")
+    healthPanel.Name = "HealthPanel"
+    healthPanel.Size = UDim2.new(0, 300, 0, 200)
+    healthPanel.Position = UDim2.new(1, -320, 0, 20)
+    healthPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    healthPanel.BackgroundTransparency = 0.15
+    healthPanel.BorderSizePixel = 0
+    healthPanel.Parent = ComplexHUD
+    
+    local healthCorner = Instance.new("UICorner")
+    healthCorner.CornerRadius = UDim.new(0, 12)
+    healthCorner.Parent = healthPanel
+    
+    local healthStroke = Instance.new("UIStroke")
+    healthStroke.Color = Color3.fromRGB(0, 255, 100)
+    healthStroke.Thickness = 2
+    healthStroke.Transparency = 0.3
+    healthStroke.Parent = healthPanel
+    
+    -- Header
+    local healthHeader = Instance.new("Frame")
+    healthHeader.Size = UDim2.new(1, 0, 0, 40)
+    healthHeader.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    healthHeader.BackgroundTransparency = 0.3
+    healthHeader.BorderSizePixel = 0
+    healthHeader.Parent = healthPanel
+    
+    local healthHeaderCorner = Instance.new("UICorner")
+    healthHeaderCorner.CornerRadius = UDim.new(0, 12)
+    healthHeaderCorner.Parent = healthHeader
+    
+    local healthTitle = Instance.new("TextLabel")
+    healthTitle.Size = UDim2.new(1, -20, 1, 0)
+    healthTitle.Position = UDim2.new(0, 10, 0, 0)
+    healthTitle.BackgroundTransparency = 1
+    healthTitle.Text = "❤️ VITAL SIGNS"
+    healthTitle.TextColor3 = Color3.fromRGB(100, 255, 150)
+    healthTitle.Font = Enum.Font.GothamBold
+    healthTitle.TextSize = 14
+    healthTitle.TextXAlignment = Enum.TextXAlignment.Left
+    healthTitle.Parent = healthHeader
+    
+    -- Barra de salud principal
+    local healthBarBG = Instance.new("Frame")
+    healthBarBG.Name = "HealthBarBG"
+    healthBarBG.Size = UDim2.new(1, -20, 0, 35)
+    healthBarBG.Position = UDim2.new(0, 10, 0, 50)
+    healthBarBG.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    healthBarBG.BorderSizePixel = 0
+    healthBarBG.Parent = healthPanel
+    
+    local healthBarBGCorner = Instance.new("UICorner")
+    healthBarBGCorner.CornerRadius = UDim.new(0, 6)
+    healthBarBGCorner.Parent = healthBarBG
+    
+    local healthBarFill = Instance.new("Frame")
+    healthBarFill.Name = "HealthBarFill"
+    healthBarFill.Size = UDim2.new(1, 0, 1, 0)
+    healthBarFill.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+    healthBarFill.BorderSizePixel = 0
+    healthBarFill.Parent = healthBarBG
+    
+    local healthBarFillCorner = Instance.new("UICorner")
+    healthBarFillCorner.CornerRadius = UDim.new(0, 6)
+    healthBarFillCorner.Parent = healthBarFill
+    
+    local healthBarLabel = Instance.new("TextLabel")
+    healthBarLabel.Name = "HealthBarLabel"
+    healthBarLabel.Size = UDim2.new(1, 0, 1, 0)
+    healthBarLabel.BackgroundTransparency = 1
+    healthBarLabel.Text = "100 / 100"
+    healthBarLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    healthBarLabel.Font = Enum.Font.GothamBold
+    healthBarLabel.TextSize = 14
+    healthBarLabel.ZIndex = 2
+    healthBarLabel.Parent = healthBarBG
+    
+    -- Información adicional
+    local infoContainer = Instance.new("Frame")
+    infoContainer.Name = "InfoContainer"
+    infoContainer.Size = UDim2.new(1, -20, 0, 95)
+    infoContainer.Position = UDim2.new(0, 10, 0, 95)
+    infoContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    infoContainer.BackgroundTransparency = 0.5
+    infoContainer.BorderSizePixel = 0
+    infoContainer.Parent = healthPanel
+    
+    local infoCorner = Instance.new("UICorner")
+    infoCorner.CornerRadius = UDim.new(0, 6)
+    infoCorner.Parent = infoContainer
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "StatusLabel"
+    statusLabel.Size = UDim2.new(1, -16, 1, -16)
+    statusLabel.Position = UDim2.new(0, 8, 0, 8)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "STATUS: ONLINE\nPOSITION: 0, 0, 0\nALIVE: YES\nTIME: 00:00:00"
+    statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    statusLabel.Font = Enum.Font.Code
+    statusLabel.TextSize = 11
+    statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+    statusLabel.TextYAlignment = Enum.TextYAlignment.Top
+    statusLabel.Parent = infoContainer
+    
+    -- Animación de pulso en el borde
+    task.spawn(function()
+        while ComplexHUD and ComplexHUD.Parent do
+            if healthPanel.Parent then
+                TweenService:Create(healthStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+                    Transparency = 0.1
+                }):Play()
+                task.wait(1)
+                TweenService:Create(healthStroke, TweenInfo.new(1, Enum.EasingStyle.Sine), {
+                    Transparency = 0.5
+                }):Play()
+                task.wait(1)
+            else
+                break
+            end
+        end
+    end)
+    
+    -- ============================================
+    -- PANEL 3: LUX FUNCTIONS (Centro Derecha)
+    -- ============================================
+    local functionsPanel = Instance.new("Frame")
+    functionsPanel.Name = "FunctionsPanel"
+    functionsPanel.Size = UDim2.new(0, 300, 0, 400)
+    functionsPanel.Position = UDim2.new(1, -320, 0.5, -200)
+    functionsPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    functionsPanel.BackgroundTransparency = 0.15
+    functionsPanel.BorderSizePixel = 0
+    functionsPanel.Parent = ComplexHUD
+    
+    local functionsCorner = Instance.new("UICorner")
+    functionsCorner.CornerRadius = UDim.new(0, 12)
+    functionsCorner.Parent = functionsPanel
+    
+    local functionsStroke = Instance.new("UIStroke")
+    functionsStroke.Color = Color3.fromRGB(255, 0, 150)
+    functionsStroke.Thickness = 2
+    functionsStroke.Transparency = 0.3
+    functionsStroke.Parent = functionsPanel
+    
+    -- Header
+    local functionsHeader = Instance.new("Frame")
+    functionsHeader.Size = UDim2.new(1, 0, 0, 40)
+    functionsHeader.BackgroundColor3 = Color3.fromRGB(200, 0, 120)
+    functionsHeader.BackgroundTransparency = 0.3
+    functionsHeader.BorderSizePixel = 0
+    functionsHeader.Parent = functionsPanel
+    
+    local functionsHeaderCorner = Instance.new("UICorner")
+    functionsHeaderCorner.CornerRadius = UDim.new(0, 12)
+    functionsHeaderCorner.Parent = functionsHeader
+    
+    local functionsTitle = Instance.new("TextLabel")
+    functionsTitle.Size = UDim2.new(1, -20, 1, 0)
+    functionsTitle.Position = UDim2.new(0, 10, 0, 0)
+    functionsTitle.BackgroundTransparency = 1
+    functionsTitle.Text = "⚡ LUX FUNCTIONS"
+    functionsTitle.TextColor3 = Color3.fromRGB(255, 150, 200)
+    functionsTitle.Font = Enum.Font.GothamBold
+    functionsTitle.TextSize = 14
+    functionsTitle.TextXAlignment = Enum.TextXAlignment.Left
+    functionsTitle.Parent = functionsHeader
+    
+    -- ScrollingFrame para funciones
+    local functionsScroll = Instance.new("ScrollingFrame")
+    functionsScroll.Size = UDim2.new(1, -20, 1, -60)
+    functionsScroll.Position = UDim2.new(0, 10, 0, 50)
+    functionsScroll.BackgroundTransparency = 1
+    functionsScroll.BorderSizePixel = 0
+    functionsScroll.ScrollBarThickness = 4
+    functionsScroll.ScrollBarImageColor3 = Color3.fromRGB(255, 0, 150)
+    functionsScroll.CanvasSize = UDim2.new(0, 0, 0, 700)
+    functionsScroll.Parent = functionsPanel
+    
+    -- Función para crear botón de función con toggle
+    local function CreateFunctionButton(name, icon, description, yPos, toggleFunc, statusFunc)
+        local container = Instance.new("Frame")
+        container.Size = UDim2.new(1, -10, 0, 80)
+        container.Position = UDim2.new(0, 5, 0, yPos)
+        container.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+        container.BackgroundTransparency = 0.5
+        container.BorderSizePixel = 0
+        container.Parent = functionsScroll
+        
+        local containerCorner = Instance.new("UICorner")
+        containerCorner.CornerRadius = UDim.new(0, 8)
+        containerCorner.Parent = container
+        
+        -- Botón de toggle
+        local toggleBtn = Instance.new("TextButton")
+        toggleBtn.Name = name .. "Toggle"
+        toggleBtn.Size = UDim2.new(0, 60, 0, 60)
+        toggleBtn.Position = UDim2.new(0, 10, 0, 10)
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 85)
+        toggleBtn.Text = icon
+        toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        toggleBtn.Font = Enum.Font.GothamBold
+        toggleBtn.TextSize = 24
+        toggleBtn.Parent = container
+        
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 8)
+        toggleCorner.Parent = toggleBtn
+        
+        -- Indicador de estado
+        local statusIndicator = Instance.new("Frame")
+        statusIndicator.Name = "StatusIndicator"
+        statusIndicator.Size = UDim2.new(0, 12, 0, 12)
+        statusIndicator.Position = UDim2.new(1, -8, 0, 4)
+        statusIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 105)
+        statusIndicator.BorderSizePixel = 0
+        statusIndicator.Parent = toggleBtn
+        
+        local indicatorCorner = Instance.new("UICorner")
+        indicatorCorner.CornerRadius = UDim.new(1, 0)
+        indicatorCorner.Parent = statusIndicator
+        
+        -- Información del botón
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, -85, 0, 25)
+        infoLabel.Position = UDim2.new(0, 75, 0, 10)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Text = name
+        infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        infoLabel.Font = Enum.Font.GothamBold
+        infoLabel.TextSize = 13
+        infoLabel.TextXAlignment = Enum.TextXAlignment.Left
+        infoLabel.Parent = container
+        
+        local descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(1, -85, 0, 40)
+        descLabel.Position = UDim2.new(0, 75, 0, 32)
+        descLabel.BackgroundTransparency = 1
+        descLabel.Text = description
+        descLabel.TextColor3 = Color3.fromRGB(180, 180, 185)
+        descLabel.Font = Enum.Font.Gotham
+        descLabel.TextSize = 10
+        descLabel.TextXAlignment = Enum.TextXAlignment.Left
+        descLabel.TextYAlignment = Enum.TextYAlignment.Top
+        descLabel.TextWrapped = true
+        descLabel.Parent = container
+        
+        -- Conectar toggle
+        if PRIVATE_MODE and toggleFunc then
+            toggleBtn.MouseButton1Click:Connect(function()
+                local isActive = toggleFunc()
+                
+                if isActive then
+                    toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 220, 100)
+                    statusIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                else
+                    toggleBtn.BackgroundColor3 = Color3.fromRGB(80, 80, 85)
+                    statusIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 105)
+                end
+            end)
+        elseif not PRIVATE_MODE then
+            toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+            toggleBtn.Text = "🔒"
+            infoLabel.TextColor3 = Color3.fromRGB(120, 120, 125)
+            descLabel.Text = "PRIVATE MODE ONLY"
+        end
+        
+        return container, toggleBtn, statusIndicator
+    end
+    
+    -- Función 1: Auto-Dodge
+    CreateFunctionButton(
+        "AUTO-DODGE",
+        "🛡️",
+        "Teleport behind enemies when they get within 12 studs",
+        5,
+        function()
+            if IsAutoDodgeActive() then
+                DisableAutoDodge()
+                return false
+            else
+                EnableAutoDodge()
+                return true
+            end
+        end,
+        IsAutoDodgeActive
+    )
+    
+    -- Función 2: Enemy Highlights
+    CreateFunctionButton(
+        "HIGHLIGHT ENEMIES",
+        "👁️",
+        "Show red highlights on all nearby hostile targets",
+        90,
+        function()
+            UpdateEnemyHighlights()
+            return false -- No es toggle, es acción instantánea
+        end
+    )
+    
+    -- Función 3: Clear Highlights
+    CreateFunctionButton(
+        "CLEAR HIGHLIGHTS",
+        "🧹",
+        "Remove all active enemy highlights from view",
+        175,
+        function()
+            ClearAllHighlights()
+            return false
+        end
+    )
+    
+    -- Función 4: Dance
+    CreateFunctionButton(
+        "DANCE MODE",
+        "💃",
+        "Execute breakdance animation in loop mode",
+        260,
+        function()
+            if CurrentDanceTrack and CurrentDanceTrack.IsPlaying then
+                StopCharacterDance()
+                return false
+            else
+                MakeCharacterDance()
+                return true
+            end
+        end
+    )
+    
+    -- Función 5: Stop Following
+    CreateFunctionButton(
+        "STOP FOLLOW",
+        "🛑",
+        "Cease current follow target and return to idle",
+        345,
+        function()
+            if FollowTarget then
+                StopFollowing()
+            end
+            return false
+        end
+    )
+    
+    -- Función 6: Scan Environment
+    CreateFunctionButton(
+        "SCAN AREA",
+        "🔍",
+        "Perform full environment scan for objects and players",
+        430,
+        function()
+            ScanEnvironment()
+            return false
+        end
+    )
+    
+    -- Función 7: Teleport to Player (con input)
+    local tpContainer = Instance.new("Frame")
+    tpContainer.Size = UDim2.new(1, -10, 0, 80)
+    tpContainer.Position = UDim2.new(0, 5, 0, 515)
+    tpContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    tpContainer.BackgroundTransparency = 0.5
+    tpContainer.BorderSizePixel = 0
+    tpContainer.Parent = functionsScroll
+    
+    local tpCorner = Instance.new("UICorner")
+    tpCorner.CornerRadius = UDim.new(0, 8)
+    tpCorner.Parent = tpContainer
+    
+    local tpLabel = Instance.new("TextLabel")
+    tpLabel.Size = UDim2.new(1, -20, 0, 20)
+    tpLabel.Position = UDim2.new(0, 10, 0, 8)
+    tpLabel.BackgroundTransparency = 1
+    tpLabel.Text = "🌀 TELEPORT TO PLAYER"
+    tpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpLabel.Font = Enum.Font.GothamBold
+    tpLabel.TextSize = 12
+    tpLabel.TextXAlignment = Enum.TextXAlignment.Left
+    tpLabel.Parent = tpContainer
+    
+    local tpInput = Instance.new("TextBox")
+    tpInput.Size = UDim2.new(0.6, -5, 0, 35)
+    tpInput.Position = UDim2.new(0, 10, 0, 35)
+    tpInput.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    tpInput.PlaceholderText = "Player name..."
+    tpInput.PlaceholderColor3 = Color3.fromRGB(120, 120, 125)
+    tpInput.Text = ""
+    tpInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpInput.Font = Enum.Font.Gotham
+    tpInput.TextSize = 11
+    tpInput.Parent = tpContainer
+    
+    local tpInputCorner = Instance.new("UICorner")
+    tpInputCorner.CornerRadius = UDim.new(0, 6)
+    tpInputCorner.Parent = tpInput
+    
+    local tpButton = Instance.new("TextButton")
+    tpButton.Size = UDim2.new(0.38, 0, 0, 35)
+    tpButton.Position = UDim2.new(0.62, 0, 0, 35)
+    tpButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
+    tpButton.Text = "TELEPORT"
+    tpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    tpButton.Font = Enum.Font.GothamBold
+    tpButton.TextSize = 11
+    tpButton.Parent = tpContainer
+    
+    local tpButtonCorner = Instance.new("UICorner")
+    tpButtonCorner.CornerRadius = UDim.new(0, 6)
+    tpButtonCorner.Parent = tpButton
+    
+    if PRIVATE_MODE then
+        tpButton.MouseButton1Click:Connect(function()
+            local searchName = tpInput.Text
+            if #searchName >= 3 then
+                local bestMatch = nil
+                local bestMatchLength = 0
+                
+                for _, player in ipairs(Players:GetPlayers()) do
+                    local displayName = (player.DisplayName or ""):lower()
+                    local username = player.Name:lower()
+                    
+                    if displayName:find(searchName:lower(), 1, true) or username:find(searchName:lower(), 1, true) then
+                        local matchLength = math.min(#searchName, #username)
+                        if matchLength > bestMatchLength then
+                            bestMatch = player
+                            bestMatchLength = matchLength
+                        end
+                    end
+                end
+                
+                if bestMatch and bestMatch.Character then
+                    local targetRoot = bestMatch.Character:FindFirstChild("HumanoidRootPart")
+                    if targetRoot then
+                        local character = LP.Character
+                        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+                        
+                        if rootPart then
+                            local targetPos = targetRoot.Position + Vector3.new(3, 2.5, 0)
+                            rootPart.CFrame = CFrame.new(targetPos)
+                            tpButton.Text = "✓ SUCCESS"
+                            task.wait(1)
+                            tpButton.Text = "TELEPORT"
+                        end
+                    end
+                else
+                    tpButton.Text = "NOT FOUND"
+                    task.wait(1)
+                    tpButton.Text = "TELEPORT"
+                end
+            end
+        end)
+    else
+        tpButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+        tpButton.Text = "🔒 PRIVATE"
+    end
+    
+    -- Función 8: Debug Environment
+    CreateFunctionButton(
+        "DEBUG MODE",
+        "🔧",
+        "Print detailed environment data to console (F9)",
+        600,
+        function()
+            DebugEnvironmentData()
+            return false
+        end
+    )
     
     return ComplexHUD
 end
@@ -1813,72 +2133,81 @@ end
 local function UpdateComplexHUD()
     if not ComplexHUD or not ComplexHUD.Visible then return end
     
-    local scrollFrame = ComplexHUD:FindFirstChild("ScrollingFrame")
-    if not scrollFrame then return end
-    
-    -- Actualizar estado del sistema
-    local systemStatus = scrollFrame:FindFirstChild("SystemStatus")
-    if systemStatus then
-        local statusText = string.format(
-            "AI: %s | API: %s\nMode: %s | Provider: %s\nAuto-Dodge: %s",
-            Settings.AI_Enabled and "ONLINE" or "OFFLINE",
-            _G.LuxAPIReady and "READY" or "NOT READY",
-            PRIVATE_MODE and "PRIVATE" or "PUBLIC",
-            API_PROVIDER:upper(),
-            IsAutoDodgeActive() and "ACTIVE" or "INACTIVE"
-        )
-        systemStatus.Text = statusText
-    end
-    
-    -- Actualizar datos del entorno
-    local envData = scrollFrame:FindFirstChild("EnvData")
-    if envData then
+    -- Actualizar panel de salud
+    local healthPanel = ComplexHUD:FindFirstChild("HealthPanel")
+    if healthPanel then
         local env = ScanEnvironment()
         if env then
-            local envText = string.format(
-                "Health: %d/%d | Alive: %s\nPlayers: %d total | %d nearby\nGame: %s\nTime: %s",
-                env.owner.health,
-                env.owner.maxHealth,
-                env.owner.isAlive and "YES" or "NO",
-                env.totalPlayers,
-                env.playersNearby,
-                env.gameName or "Unknown",
-                os.date("%H:%M:%S")
-            )
-            envData.Text = envText
+            -- Actualizar barra de salud
+            local healthBarFill = healthPanel:FindFirstChild("HealthBarBG"):FindFirstChild("HealthBarFill")
+            local healthBarLabel = healthPanel:FindFirstChild("HealthBarBG"):FindFirstChild("HealthBarLabel")
+            
+            if healthBarFill and healthBarLabel then
+                local healthPercent = env.owner.health / env.owner.maxHealth
+                healthBarFill.Size = UDim2.new(healthPercent, 0, 1, 0)
+                healthBarLabel.Text = string.format("%d / %d", env.owner.health, env.owner.maxHealth)
+            end
+            
+            -- Actualizar información adicional
+            local statusLabel = healthPanel:FindFirstChild("InfoContainer"):FindFirstChild("StatusLabel")
+            if statusLabel then
+                local ownerPos = env.owner.position
+                statusLabel.Text = string.format(
+                    "STATUS: %s\nPOSITION: %d, %d, %d\nALIVE: %s\nTIME: %s",
+                    Settings.AI_Enabled and "ONLINE" or "OFFLINE",
+                    math.floor(ownerPos.X),
+                    math.floor(ownerPos.Y),
+                    math.floor(ownerPos.Z),
+                    env.owner.isAlive and "YES" or "NO",
+                    os.date("%H:%M:%S")
+                )
+            end
         end
     end
     
-    -- Actualizar lista de enemigos
-    local enemyList = scrollFrame:FindFirstChild("EnemyList")
-    if enemyList then
-        local enemies = GetNearbyEnemies(50)
-        
-        if #enemies == 0 then
-            enemyList.Text = "No threats detected"
-            enemyList.TextColor3 = Color3.fromRGB(100, 255, 100)
-        else
-            local enemyText = string.format("⚠️ %d HOSTILE(S) DETECTED:\n\n", #enemies)
-            
-            for i, enemy in ipairs(enemies) do
-                if i <= 5 then -- Máximo 5 enemigos en lista
-                    enemyText = enemyText .. string.format(
-                        "%d. %s\n   %dm | HP: %d/%d\n",
-                        i,
-                        enemy.name,
-                        enemy.distance,
-                        enemy.health,
-                        enemy.maxHealth
-                    )
+    -- Actualizar estado en panel de scripts
+    local scriptsPanel = ComplexHUD:FindFirstChild("ScriptsPanel")
+    if scriptsPanel then
+        -- Look for the specific mode status label by finding the one with the mode text
+        for _, child in pairs(scriptsPanel:GetChildren()) do
+            if child:IsA("TextLabel") and child.Text:match("MODE:") then
+                child.Text = "MODE: " .. (PRIVATE_MODE and "PRIVATE" or "PUBLIC") .. "\nAPI: " .. API_PROVIDER:upper()
+                break
+            end
+        end
+    end
+    
+    -- Actualizar funciones panel - por ejemplo, mostrar enemigos detectados
+    local functionsPanel = ComplexHUD:FindFirstChild("FunctionsPanel")
+    if functionsPanel then
+        -- Actualizar el estado de los botones de toggle según las funciones activas
+        local functionsScroll = functionsPanel:FindFirstChild("ScrollingFrame")
+        if functionsScroll then
+            -- Buscar botones específicos y actualizar su estado visual
+            for _, child in pairs(functionsScroll:GetChildren()) do
+                if child:IsA("Frame") then
+                    for _, btnChild in pairs(child:GetChildren()) do
+                        if btnChild:IsA("TextButton") and btnChild.Name:match("Toggle") then
+                            -- Actualizar el botón de Auto-Dodge
+                            if btnChild.Name == "AUTO-DODGEToggle" then
+                                if IsAutoDodgeActive() then
+                                    btnChild.BackgroundColor3 = Color3.fromRGB(60, 220, 100)
+                                    local statusIndicator = btnChild:FindFirstChild("StatusIndicator")
+                                    if statusIndicator then
+                                        statusIndicator.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+                                    end
+                                else
+                                    btnChild.BackgroundColor3 = Color3.fromRGB(80, 80, 85)
+                                    local statusIndicator = btnChild:FindFirstChild("StatusIndicator")
+                                    if statusIndicator then
+                                        statusIndicator.BackgroundColor3 = Color3.fromRGB(100, 100, 105)
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end
-            
-            if #enemies > 5 then
-                enemyText = enemyText .. string.format("\n+ %d more...", #enemies - 5)
-            end
-            
-            enemyList.Text = enemyText
-            enemyList.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
     end
 end
