@@ -498,8 +498,8 @@ maxCount = maxCount or 3
 local result = {}
 for i = 1, math.min(maxCount, #enemies) do
 local e = enemies[i]
--- Formato: "nombre dist studs hp/maxhp"
-local formatted = string.format("%s %ds h%d/%d",
+-- Cambiar "ds" por "dm" (metros)
+local formatted = string.format("%s %dm %d/%d",
 e.name,
 e.distance,
 e.health,
@@ -711,8 +711,8 @@ local function FormatObjectInfo(objName, objData)
 local pos = objData.position
 local ownerRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 local distance = ownerRoot and math.floor((pos - ownerRoot.Position).Magnitude) or 0
--- Formato simple: "nombre dist studs pos x y z"
-return string.format("%s %ds pos %.0f %.0f %.0f",
+-- Simplificar formato
+return string.format("%s %dm %.0f %.0f %.0f",
 objName,
 distance,
 pos.X,
@@ -1838,7 +1838,7 @@ if channels then
 local targetChannel = channels:FindFirstChild("RBXGeneral") or channels:FindFirstChild("General")
 if targetChannel then
 pcall(function()
-targetChannel:SendAsync("[Lux]: " .. text)
+targetChannel:SendAsync("LUX: " .. text)
 messageSent = true
 end)
 end
@@ -1849,7 +1849,7 @@ if not messageSent and TextChatService:FindFirstChild("ChatInputBarConfiguration
 local config = TextChatService.ChatInputBarConfiguration
 if config.TargetTextChannel then
 pcall(function()
-config.TargetTextChannel:SendAsync("[Lux]: " .. text)
+config.TargetTextChannel:SendAsync("LUX: " .. text)
 messageSent = true
 end)
 end
@@ -1861,7 +1861,7 @@ if events then
 local sayRequest = events:FindFirstChild("SayMessageRequest")
 if sayRequest then
 pcall(function()
-sayRequest:FireServer("[Lux]: " .. text, "All")
+sayRequest:FireServer("LUX: " .. text, "All")
 messageSent = true
 end)
 end
@@ -1870,7 +1870,7 @@ end
 -- Método 4: Último recurso
 if not messageSent then
 pcall(function()
-game:GetService("Players"):Chat("[Lux]: " .. text)
+game:GetService("Players"):Chat("LUX: " .. text)
 end)
 end
 end
@@ -2104,6 +2104,11 @@ end
 local function HandleChatMessage(player, messageText)
 -- Debug: Ver qué mensajes llegan
 print("[Lux DEBUG] Message from:", player.Name, "| Text:", messageText)
+    -- NUEVO: Ignorar mensajes que empiecen con "LUX:" (anti-loop)
+    if messageText:match("^LUX:") then
+        print("[Lux DEBUG] Ignoring own message (anti-loop)")
+        return
+    end
 -- Verificar que la IA esté activada
 if not Settings.AI_Enabled or not _G.LuxAPIReady then
 print("[Lux DEBUG] AI not ready, ignoring message")
@@ -2138,7 +2143,7 @@ end
 print("[Lux DEBUG] Message passed filters, processing...")
 local userId = player.UserId
 local lowerMessage = messageText:lower()
-local startsWithLux = lowerMessage:match("^" .. BOT_NAME)
+local startsWithLux = lowerMessage:match("^lux") -- Ahora detecta "lux" en cualquier caso
 local isInConversation = IsInActiveConversation(userId)
 -- Determinar si debe procesar el mensaje
 local shouldProcess = false
@@ -2421,7 +2426,7 @@ end
 return
 end
 -- Comando especial: detener baile
-if userMessage:lower() == "detener baile" or userMessage:lower() == "stop dance" or userMessage:lower() == "para de bailar" then
+if userMessage:lower() == "stop" then
 local success, message = StopCharacterDance()
 if success then
 SendChatMessage("🛑 " .. message)
