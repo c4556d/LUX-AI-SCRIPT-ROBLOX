@@ -283,6 +283,10 @@ local VALIDATION_FILE_NAME = "Lux_Validation.txt"
 local ComplexMode = false
 local ComplexHUD = nil
 local HUDUpdateConnection = nil
+-- Variables para el chat del modo Complex
+local ComplexChatHistory = {}
+local ComplexChatDisplay = nil
+local ComplexChatInput = nil
 -- ⬇️ PEGA AQUÍ:
 local PRIVATE_MODE = true -- true = solo el dueño puede hablar
 local scriptOwner = LP -- El jugador que ejecuta el script
@@ -2126,6 +2130,283 @@ local function CreateComplexHUD()
         end
     )
     
+    -- ============================================
+    -- PANEL 4: LUX CHAT INTERFACE (Centro Izquierda)
+    -- ============================================
+    local chatPanel = Instance.new("Frame")
+    chatPanel.Name = "ChatPanel"
+    chatPanel.Size = UDim2.new(0, 400, 0, 450)
+    chatPanel.Position = UDim2.new(0, 20, 0.5, -225)
+    chatPanel.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
+    chatPanel.BackgroundTransparency = 0.15
+    chatPanel.BorderSizePixel = 0
+    chatPanel.Parent = ComplexHUD
+    
+    local chatCorner = Instance.new("UICorner")
+    chatCorner.CornerRadius = UDim.new(0, 12)
+    chatCorner.Parent = chatPanel
+    
+    local chatStroke = Instance.new("UIStroke")
+    chatStroke.Color = Color3.fromRGB(0, 150, 255)
+    chatStroke.Thickness = 2
+    chatStroke.Transparency = 0.3
+    chatStroke.Parent = chatPanel
+    
+    -- Header
+    local chatHeader = Instance.new("Frame")
+    chatHeader.Size = UDim2.new(1, 0, 0, 45)
+    chatHeader.BackgroundColor3 = Color3.fromRGB(0, 120, 220)
+    chatHeader.BackgroundTransparency = 0.3
+    chatHeader.BorderSizePixel = 0
+    chatHeader.Parent = chatPanel
+    
+    local chatHeaderCorner = Instance.new("UICorner")
+    chatHeaderCorner.CornerRadius = UDim.new(0, 12)
+    chatHeaderCorner.Parent = chatHeader
+    
+    local chatTitle = Instance.new("TextLabel")
+    chatTitle.Size = UDim2.new(1, -20, 1, 0)
+    chatTitle.Position = UDim2.new(0, 10, 0, 0)
+    chatTitle.BackgroundTransparency = 1
+    chatTitle.Text = "⚡ LUX NEURAL INTERFACE"
+    chatTitle.TextColor3 = Color3.fromRGB(100, 200, 255)
+    chatTitle.Font = Enum.Font.GothamBold
+    chatTitle.TextSize = 15
+    chatTitle.TextXAlignment = Enum.TextXAlignment.Left
+    chatTitle.Parent = chatHeader
+    
+    -- Estado de conexión
+    local connectionStatus = Instance.new("TextLabel")
+    connectionStatus.Name = "ConnectionStatus"
+    connectionStatus.Size = UDim2.new(0, 150, 0, 20)
+    connectionStatus.Position = UDim2.new(1, -160, 0, 12)
+    connectionStatus.BackgroundTransparency = 1
+    connectionStatus.Text = "◉ NEURAL LINK: ACTIVE"
+    connectionStatus.TextColor3 = Color3.fromRGB(0, 255, 150)
+    connectionStatus.Font = Enum.Font.Code
+    connectionStatus.TextSize = 9
+    connectionStatus.TextXAlignment = Enum.TextXAlignment.Right
+    connectionStatus.Parent = chatHeader
+    
+    -- Animación de estado de conexión
+    task.spawn(function()
+        while ComplexHUD and ComplexHUD.Parent do
+            if chatPanel.Parent then
+                connectionStatus.TextColor3 = Color3.fromRGB(0, 255, 150)
+                task.wait(1.5)
+                connectionStatus.TextColor3 = Color3.fromRGB(0, 200, 120)
+                task.wait(1.5)
+            else
+                break
+            end
+        end
+    end)
+    
+    -- Display de chat (historial)
+    local chatDisplayFrame = Instance.new("Frame")
+    chatDisplayFrame.Size = UDim2.new(1, -20, 1, -125)
+    chatDisplayFrame.Position = UDim2.new(0, 10, 0, 55)
+    chatDisplayFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+    chatDisplayFrame.BackgroundTransparency = 0.3
+    chatDisplayFrame.BorderSizePixel = 0
+    chatDisplayFrame.Parent = chatPanel
+    
+    local displayCorner = Instance.new("UICorner")
+    displayCorner.CornerRadius = UDim.new(0, 8)
+    displayCorner.Parent = chatDisplayFrame
+    
+    ComplexChatDisplay = Instance.new("ScrollingFrame")
+    ComplexChatDisplay.Name = "ChatDisplay"
+    ComplexChatDisplay.Size = UDim2.new(1, -10, 1, -10)
+    ComplexChatDisplay.Position = UDim2.new(0, 5, 0, 5)
+    ComplexChatDisplay.BackgroundTransparency = 1
+    ComplexChatDisplay.BorderSizePixel = 0
+    ComplexChatDisplay.ScrollBarThickness = 4
+    ComplexChatDisplay.ScrollBarImageColor3 = Color3.fromRGB(0, 150, 255)
+    ComplexChatDisplay.CanvasSize = UDim2.new(0, 0, 0, 0)
+    ComplexChatDisplay.Parent = chatDisplayFrame
+    
+    -- Mensaje inicial de Lux
+    local function AddChatMessage(sender, message, color)
+        local yOffset = 5
+        for _, child in pairs(ComplexChatDisplay:GetChildren()) do
+            if child:IsA("Frame") then
+                yOffset = yOffset + child.Size.Y.Offset + 8
+            end
+        end
+        
+        local msgFrame = Instance.new("Frame")
+        msgFrame.Size = UDim2.new(1, -10, 0, 0)
+        msgFrame.Position = UDim2.new(0, 5, 0, yOffset)
+        msgFrame.BackgroundTransparency = 1
+        msgFrame.BorderSizePixel = 0
+        msgFrame.Parent = ComplexChatDisplay
+        
+        local senderLabel = Instance.new("TextLabel")
+        senderLabel.Size = UDim2.new(1, 0, 0, 18)
+        senderLabel.BackgroundTransparency = 1
+        senderLabel.Text = sender .. " [" .. os.date("%H:%M:%S") .. "]"
+        senderLabel.TextColor3 = color
+        senderLabel.Font = Enum.Font.Code
+        senderLabel.TextSize = 10
+        senderLabel.TextXAlignment = Enum.TextXAlignment.Left
+        senderLabel.Parent = msgFrame
+        
+        local messageLabel = Instance.new("TextLabel")
+        messageLabel.Size = UDim2.new(1, -10, 0, 0)
+        messageLabel.Position = UDim2.new(0, 10, 0, 20)
+        messageLabel.BackgroundTransparency = 1
+        messageLabel.Text = message
+        messageLabel.TextColor3 = Color3.fromRGB(220, 220, 225)
+        messageLabel.Font = Enum.Font.Gotham
+        messageLabel.TextSize = 11
+        messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+        messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+        messageLabel.TextWrapped = true
+        messageLabel.Parent = msgFrame
+        
+        -- Calcular altura del mensaje
+        local textBounds = game:GetService("TextService"):GetTextSize(
+            message,
+            11,
+            Enum.Font.Gotham,
+            Vector2.new(messageLabel.AbsoluteSize.X, math.huge)
+        )
+        
+        messageLabel.Size = UDim2.new(1, -10, 0, textBounds.Y + 5)
+        msgFrame.Size = UDim2.new(1, -10, 0, textBounds.Y + 28)
+        
+        -- Actualizar canvas size
+        ComplexChatDisplay.CanvasSize = UDim2.new(0, 0, 0, yOffset + msgFrame.Size.Y.Offset + 15)
+        ComplexChatDisplay.CanvasPosition = Vector2.new(0, ComplexChatDisplay.CanvasSize.Y.Offset)
+        
+        return msgFrame
+    end
+    
+    -- Mensaje de bienvenida
+    AddChatMessage(
+        "SYSTEM",
+        "Neural interface initialized. Lux AI online. Technical mode active.",
+        Color3.fromRGB(100, 255, 150)
+    )
+    
+    -- Input de chat
+    local chatInputFrame = Instance.new("Frame")
+    chatInputFrame.Size = UDim2.new(1, -20, 0, 55)
+    chatInputFrame.Position = UDim2.new(0, 10, 1, -65)
+    chatInputFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    chatInputFrame.BackgroundTransparency = 0.3
+    chatInputFrame.BorderSizePixel = 0
+    chatInputFrame.Parent = chatPanel
+    
+    local inputCorner = Instance.new("UICorner")
+    inputCorner.CornerRadius = UDim.new(0, 8)
+    inputCorner.Parent = chatInputFrame
+    
+    ComplexChatInput = Instance.new("TextBox")
+    ComplexChatInput.Name = "ChatInput"
+    ComplexChatInput.Size = UDim2.new(1, -75, 1, -10)
+    ComplexChatInput.Position = UDim2.new(0, 8, 0, 5)
+    ComplexChatInput.BackgroundTransparency = 1
+    ComplexChatInput.PlaceholderText = "Enter query..."
+    ComplexChatInput.PlaceholderColor3 = Color3.fromRGB(100, 100, 105)
+    ComplexChatInput.Text = ""
+    ComplexChatInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ComplexChatInput.Font = Enum.Font.Gotham
+    ComplexChatInput.TextSize = 12
+    ComplexChatInput.TextXAlignment = Enum.TextXAlignment.Left
+    ComplexChatInput.ClearTextOnFocus = false
+    ComplexChatInput.Parent = chatInputFrame
+    
+    local sendButton = Instance.new("TextButton")
+    sendButton.Size = UDim2.new(0, 55, 1, -10)
+    sendButton.Position = UDim2.new(1, -63, 0, 5)
+    sendButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+    sendButton.Text = "SEND"
+    sendButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sendButton.Font = Enum.Font.GothamBold
+    sendButton.TextSize = 11
+    sendButton.Parent = chatInputFrame
+    
+    local sendCorner = Instance.new("UICorner")
+    sendCorner.CornerRadius = UDim.new(0, 6)
+    sendCorner.Parent = sendButton
+    
+    -- Función para procesar mensaje en modo técnico
+    local function ProcessComplexChat(userMessage)
+        if not userMessage or userMessage == "" then return end
+        
+        -- Agregar mensaje del usuario
+        AddChatMessage("USER", userMessage, Color3.fromRGB(100, 200, 255))
+        
+        -- Limpiar input
+        ComplexChatInput.Text = ""
+        
+        -- Cambiar estado
+        connectionStatus.Text = "◉ PROCESSING..."
+        connectionStatus.TextColor3 = Color3.fromRGB(255, 200, 0)
+        
+        -- Procesar en background
+        task.spawn(function()
+            local response, error = AskComplexAI(userMessage, LP.DisplayName or LP.Name, LP.UserId)
+            
+            if response then
+                AddChatMessage("LUX", response, Color3.fromRGB(0, 255, 200))
+                connectionStatus.Text = "◉ NEURAL LINK: ACTIVE"
+                connectionStatus.TextColor3 = Color3.fromRGB(0, 255, 150)
+            else
+                AddChatMessage("SYSTEM", "ERROR: " .. (error or "Unknown error"), Color3.fromRGB(255, 100, 100))
+                connectionStatus.Text = "◉ ERROR"
+                connectionStatus.TextColor3 = Color3.fromRGB(255, 100, 100)
+                task.wait(2)
+                connectionStatus.Text = "◉ NEURAL LINK: ACTIVE"
+                connectionStatus.TextColor3 = Color3.fromRGB(0, 255, 150)
+            end
+        end)
+    end
+    
+    -- Conectar eventos
+    sendButton.MouseButton1Click:Connect(function()
+        ProcessComplexChat(ComplexChatInput.Text)
+    end)
+    
+    ComplexChatInput.FocusLost:Connect(function(enterPressed)
+        if enterPressed then
+            ProcessComplexChat(ComplexChatInput.Text)
+        end
+    end)
+    
+    -- Botón para limpiar chat
+    local clearChatButton = Instance.new("TextButton")
+    clearChatButton.Size = UDim2.new(0, 100, 0, 25)
+    clearChatButton.Position = UDim2.new(1, -110, 0, 10)
+    clearChatButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    clearChatButton.BackgroundTransparency = 0.3
+    clearChatButton.Text = "CLEAR HISTORY"
+    clearChatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    clearChatButton.Font = Enum.Font.GothamBold
+    clearChatButton.TextSize = 9
+    clearChatButton.Parent = chatHeader
+    
+    local clearCorner = Instance.new("UICorner")
+    clearCorner.CornerRadius = UDim.new(0, 4)
+    clearCorner.Parent = clearChatButton
+    
+    clearChatButton.MouseButton1Click:Connect(function()
+        for _, child in pairs(ComplexChatDisplay:GetChildren()) do
+            if child:IsA("Frame") then
+                child:Destroy()
+            end
+        end
+        ComplexChatHistory = {}
+        ComplexChatDisplay.CanvasSize = UDim2.new(0, 0, 0, 0)
+        AddChatMessage(
+            "SYSTEM",
+            "Chat history cleared. Memory reset complete.",
+            Color3.fromRGB(100, 255, 150)
+        )
+    end)
+    
     return ComplexHUD
 end
 
@@ -2210,6 +2491,20 @@ local function UpdateComplexHUD()
             end
         end
     end
+    
+    -- ============================================
+    -- ACTUALIZAR ESTADO DE CONEXIÓN DEL CHAT
+    -- ============================================
+    local chatPanel = ComplexHUD:FindFirstChild("ChatPanel")
+    if chatPanel then
+        local chatHeader = chatPanel:FindFirstChild("Frame")
+        if chatHeader then
+            local connectionStatus = chatHeader:FindFirstChild("ConnectionStatus")
+            if connectionStatus and not Settings.IsThinking then
+                connectionStatus.Text = "◉ NEURAL LINK: ACTIVE"
+            end
+        end
+    end
 end
 
 -- Función para activar/desactivar Modo Complex
@@ -2224,12 +2519,12 @@ local function ToggleComplexMode()
         
         ComplexHUD.Visible = true
         
-        -- Iniciar actualización continua
+        -- Iniciar actualización continua (60 FPS)
         HUDUpdateConnection = game:GetService("RunService").Heartbeat:Connect(function()
             UpdateComplexHUD()
         end)
         
-        print("[Lux] Complex Mode ACTIVADO")
+        print("[Lux] Complex Mode ACTIVADO - HUD tipo Iron Man cargado")
     else
         if ComplexHUD then
             ComplexHUD.Visible = false
@@ -3157,6 +3452,199 @@ UpdateConsole("Network Error", "Connection failed")
 return nil, "Error de conexión"
 end
 end
+
+-- ============================================
+-- FUNCIÓN DE IA PARA MODO COMPLEX (TÉCNICA)
+-- ============================================
+local function AskComplexAI(userMessage, playerName, playerUserId)
+    if API_KEY == "" or not _G.LuxAPIReady then
+        return nil, "API Key not configured"
+    end
+    
+    if not Settings.AI_Enabled then
+        return nil, "AI not activated"
+    end
+    
+    if tick() < Settings.NextReqTime then
+        return nil, "Cooldown active"
+    end
+    
+    if Settings.IsThinking then
+        return nil, "Already processing another request"
+    end
+    
+    if Settings.IsServerBusy then
+        if not Settings.IsProbing then
+            task.spawn(ProbeServer)
+        end
+        return nil, "Server busy"
+    end
+    
+    Settings.IsThinking = true
+    ThinkingStartTime = tick()
+    
+    local environmentContext = FormatEnvironmentForLux()
+    
+    -- PERSONALIDAD TÉCNICA/ROBÓTICA
+    local technicalPersonality = [[
+You are Lux, an advanced AI neural interface operating in technical mode.
+
+TECHNICAL MODE BEHAVIOR:
+- Respond in a precise, analytical, and technical manner
+- NO emojis or casual language
+- Use technical terminology and measurements
+- Provide data-driven responses with exact numbers
+- Format responses like system logs or technical readouts
+- Keep responses concise and informative (max 250 characters)
+- Use abbreviations: studs = "m", health = "HP", distance = "dist"
+- Present information in structured format when possible
+
+CAPABILITIES:
+- Real-time environment scanning and analysis
+- Hostile entity detection and tracking
+- Script execution and system management
+- Spatial navigation and teleportation
+- Player data monitoring
+
+RESPONSE STYLE EXAMPLES:
+- "Hostile detected. Distance: 45m. HP: 80/100. Team: RED."
+- "Environment scan complete. Players in range: 3. Threats: 1."
+- "Teleportation executed. Target position: 150, 25, -300."
+- "Auto-dodge system: ACTIVE. Detection range: 12m. Evasion distance: 18m."
+- "Neural link stable. All systems operational."
+
+CURRENT SYSTEM STATUS:
+Player: ]] .. playerName .. [[
+Time: ]] .. os.date("%H:%M:%S") .. [[
+Mode: ]] .. (PRIVATE_MODE and "PRIVATE" or "PUBLIC") .. [[
+Auto-Dodge: ]] .. (IsAutoDodgeActive() and "ACTIVE" or "INACTIVE") .. [[
+
+ENVIRONMENT DATA (REAL-TIME):
+]] .. environmentContext .. [[
+
+Respond to the user's query in technical mode. Be precise and analytical.
+]]
+
+    local url, requestBody, headers
+    
+    if API_PROVIDER == "groq" then
+        url = GROQ_MODEL_URL
+        headers = {
+            ["Content-Type"] = "application/json",
+            ["Authorization"] = "Bearer " .. API_KEY
+        }
+        
+        local messages = {{role = "system", content = technicalPersonality}}
+        
+        -- Agregar historial del Complex Chat
+        for _, msg in ipairs(ComplexChatHistory) do
+            table.insert(messages, msg)
+        end
+        
+        -- Mensaje actual
+        table.insert(messages, {role = "user", content = userMessage})
+        
+        requestBody = HttpService:JSONEncode({
+            model = GROQ_MODEL,
+            messages = messages,
+            max_tokens = 150,
+            temperature = 0.7 -- Más bajo para respuestas técnicas
+        })
+    else
+        url = GEMINI_MODEL_URL .. "?key=" .. API_KEY
+        headers = {["Content-Type"] = "application/json"}
+        
+        local contents = {}
+        
+        for _, msg in ipairs(ComplexChatHistory) do
+            local role = msg.role == "assistant" and "model" or "user"
+            table.insert(contents, {role = role, parts = {{text = msg.content}}})
+        end
+        
+        table.insert(contents, {role = "user", parts = {{text = userMessage}}})
+        
+        requestBody = HttpService:JSONEncode({
+            systemInstruction = {parts = {{text = technicalPersonality}}},
+            contents = contents,
+            generationConfig = {
+                maxOutputTokens = 150,
+                temperature = 0.7,
+                topP = 0.9,
+                topK = 40
+            }
+        })
+    end
+    
+    local success, res = pcall(function()
+        return HttpRequest({
+            Url = url,
+            Method = "POST",
+            Headers = headers,
+            Body = requestBody
+        })
+    end)
+    
+    Settings.IsThinking = false
+    
+    if success and res and res.Body then
+        local data
+        local decodeSuccess = pcall(function()
+            data = HttpService:JSONDecode(res.Body)
+        end)
+        
+        if not decodeSuccess then
+            return nil, "JSON decode failed"
+        end
+        
+        local reply
+        if API_PROVIDER == "groq" then
+            if data.choices and data.choices[1] and data.choices[1].message then
+                reply = data.choices[1].message.content
+            elseif data.error then
+                return nil, data.error.message or "Groq error"
+            end
+        else
+            if data.candidates and data.candidates[1] and data.candidates[1].content then
+                reply = data.candidates[1].content.parts[1].text
+            elseif data.error then
+                if data.error.code == 429 or data.error.code == 503 then
+                    Settings.IsServerBusy = true
+                    BusyStartTime = tick()
+                    if not Settings.IsProbing then
+                        task.spawn(ProbeServer)
+                    end
+                    return nil, "Server busy"
+                end
+                return nil, data.error.message or "Gemini error"
+            end
+        end
+        
+        if reply then
+            reply = reply:gsub("^%s+", ""):gsub("%s+$", "")
+            
+            if #reply > 250 then
+                reply = reply:sub(1, 247) .. "..."
+            end
+            
+            -- Guardar en historial del Complex Chat
+            table.insert(ComplexChatHistory, {role = "user", content = userMessage})
+            table.insert(ComplexChatHistory, {role = "assistant", content = reply})
+            
+            -- Limitar historial
+            while #ComplexChatHistory > 20 do
+                table.remove(ComplexChatHistory, 1)
+            end
+            
+            Settings.NextReqTime = tick() + 3
+            return reply, nil
+        else
+            return nil, "Empty response"
+        end
+    else
+        return nil, "Network error"
+    end
+end
+
 -- Función para manejar mensajes entrantes del chat
 local function HandleChatMessage(player, messageText)
 -- Debug: Ver qué mensajes llegan
