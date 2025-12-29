@@ -1561,6 +1561,12 @@ local function CreateComplexHUD()
     scriptsStroke.Transparency = 0.3
     scriptsStroke.Parent = scriptsPanel
     
+    -- Hacer panel arrastrable
+    MakePanelDraggable(scriptsPanel)
+    
+    -- Agregar botón de toggle
+    CreateToggleButton(scriptsPanel, "Scripts", true)
+    
     -- Header del panel
     local scriptsHeader = Instance.new("Frame")
     scriptsHeader.Size = UDim2.new(1, 0, 0, 40)
@@ -1583,6 +1589,8 @@ local function CreateComplexHUD()
     scriptsTitle.TextSize = 14
     scriptsTitle.TextXAlignment = Enum.TextXAlignment.Left
     scriptsTitle.Parent = scriptsHeader
+    
+    AddDragIndicator(scriptsHeader)
     
     -- Botones de scripts (2 columnas)
     local function CreateScriptButton(text, icon, row, col, color, url)
@@ -1683,6 +1691,12 @@ local function CreateComplexHUD()
     healthStroke.Transparency = 0.3
     healthStroke.Parent = healthPanel
     
+    -- Hacer panel arrastrable
+    MakePanelDraggable(healthPanel)
+    
+    -- Agregar botón de toggle
+    CreateToggleButton(healthPanel, "Health", true)
+    
     -- Header
     local healthHeader = Instance.new("Frame")
     healthHeader.Size = UDim2.new(1, 0, 0, 40)
@@ -1705,6 +1719,8 @@ local function CreateComplexHUD()
     healthTitle.TextSize = 14
     healthTitle.TextXAlignment = Enum.TextXAlignment.Left
     healthTitle.Parent = healthHeader
+    
+    AddDragIndicator(healthHeader)
     
     -- Barra de salud principal
     local healthBarBG = Instance.new("Frame")
@@ -1808,6 +1824,12 @@ local function CreateComplexHUD()
     functionsStroke.Transparency = 0.3
     functionsStroke.Parent = functionsPanel
     
+    -- Hacer panel arrastrable
+    MakePanelDraggable(functionsPanel)
+    
+    -- Agregar botón de toggle
+    CreateToggleButton(functionsPanel, "Functions", true)
+    
     -- Header
     local functionsHeader = Instance.new("Frame")
     functionsHeader.Size = UDim2.new(1, 0, 0, 40)
@@ -1830,6 +1852,8 @@ local function CreateComplexHUD()
     functionsTitle.TextSize = 14
     functionsTitle.TextXAlignment = Enum.TextXAlignment.Left
     functionsTitle.Parent = functionsHeader
+    
+    AddDragIndicator(functionsHeader)
     
     -- ScrollingFrame para funciones
     local functionsScroll = Instance.new("ScrollingFrame")
@@ -2152,6 +2176,12 @@ local function CreateComplexHUD()
     chatStroke.Transparency = 0.3
     chatStroke.Parent = chatPanel
     
+    -- Hacer panel arrastrable
+    MakePanelDraggable(chatPanel)
+    
+    -- Agregar botón de toggle
+    CreateToggleButton(chatPanel, "Chat", true)
+    
     -- Header
     local chatHeader = Instance.new("Frame")
     chatHeader.Size = UDim2.new(1, 0, 0, 45)
@@ -2174,6 +2204,8 @@ local function CreateComplexHUD()
     chatTitle.TextSize = 15
     chatTitle.TextXAlignment = Enum.TextXAlignment.Left
     chatTitle.Parent = chatHeader
+    
+    AddDragIndicator(chatHeader)
     
     -- Estado de conexión
     local connectionStatus = Instance.new("TextLabel")
@@ -2407,7 +2439,403 @@ local function CreateComplexHUD()
         )
     end)
     
+    -- ============================================
+    -- BOTÓN DE RESET GLOBAL (flotante)
+    -- ============================================
+    local resetButton = Instance.new("TextButton")
+    resetButton.Name = "ResetButton"
+    resetButton.Size = UDim2.new(0, 120, 0, 35)
+    resetButton.Position = UDim2.new(0.5, -60, 1, -50)
+    resetButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+    resetButton.BackgroundTransparency = 0.3
+    resetButton.Text = "🔄 RESET LAYOUT"
+    resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    resetButton.Font = Enum.Font.GothamBold
+    resetButton.TextSize = 11
+    resetButton.Parent = ComplexHUD
+    
+    local resetCorner = Instance.new("UICorner")
+    resetCorner.CornerRadius = UDim.new(0, 8)
+    resetCorner.Parent = resetButton
+    
+    local resetStroke = Instance.new("UIStroke")
+    resetStroke.Color = Color3.fromRGB(255, 100, 100)
+    resetStroke.Thickness = 2
+    resetStroke.Transparency = 0.5
+    resetStroke.Parent = resetButton
+    
+    resetButton.MouseButton1Click:Connect(function()
+        ResetPanelPositions()
+        resetButton.Text = "✓ RESET DONE"
+        task.wait(1.5)
+        resetButton.Text = "🔄 RESET LAYOUT"
+    end)
+    
     return ComplexHUD
+end
+
+-- ============================================
+-- SISTEMA DE PANELES DESPLEGABLES (CORTINA)
+-- ============================================
+
+-- Estados de los paneles
+local PanelStates = {
+    Scripts = true,
+    Health = true,
+    Functions = true,
+    Chat = true
+}
+
+
+
+-- Función para agregar indicador visual de arrastre
+local function AddDragIndicator(header)
+    local dragIcon = Instance.new("TextLabel")
+    dragIcon.Size = UDim2.new(0, 20, 0, 20)
+    dragIcon.Position = UDim2.new(0, 5, 0, 10)
+    dragIcon.BackgroundTransparency = 1
+    dragIcon.Text = "⋮⋮"
+    dragIcon.TextColor3 = Color3.fromRGB(150, 150, 155)
+    dragIcon.Font = Enum.Font.GothamBold
+    dragIcon.TextSize = 16
+    dragIcon.Rotation = 90
+    dragIcon.Parent = header
+    
+    return dragIcon
+end
+
+-- ============================================
+-- SISTEMA DE GUARDADO DE POSICIONES Y ESTADOS
+-- ============================================
+
+local PANEL_POSITIONS_FILE = "Lux_ComplexHUD_Positions.json"
+
+-- Función para guardar posiciones y estados de todos los paneles
+local function SavePanelPositions()
+    if not writefile then return end
+    
+    if not ComplexHUD or not ComplexHUD.Parent then return end
+    
+    local panelData = {}
+    
+    -- Guardar cada panel
+    local panels = {
+        {name = "ScriptsPanel", key = "Scripts"},
+        {name = "HealthPanel", key = "Health"},
+        {name = "FunctionsPanel", key = "Functions"},
+        {name = "ChatPanel", key = "Chat"}
+    }
+    
+    for _, panelInfo in ipairs(panels) do
+        local panel = ComplexHUD:FindFirstChild(panelInfo.name)
+        if panel then
+            panelData[panelInfo.key] = {
+                position = {
+                    XScale = panel.Position.X.Scale,
+                    XOffset = panel.Position.X.Offset,
+                    YScale = panel.Position.Y.Scale,
+                    YOffset = panel.Position.Y.Offset
+                },
+                size = {
+                    XScale = panel.Size.X.Scale,
+                    XOffset = panel.Size.X.Offset,
+                    YScale = panel.Size.Y.Scale,
+                    YOffset = panel.Size.Y.Offset
+                },
+                expanded = PanelStates[panelInfo.key] or true
+            }
+        end
+    end
+    
+    pcall(function()
+        local saveData = {
+            panels = panelData,
+            timestamp = os.time()
+        }
+        writefile(PANEL_POSITIONS_FILE, HttpService:JSONEncode(saveData))
+        print("[Lux Complex] Posiciones guardadas")
+    end)
+end
+
+-- Función para cargar posiciones guardadas
+local function LoadPanelPositions()
+    if not isfile or not isfile(PANEL_POSITIONS_FILE) then return false end
+    
+    local success = pcall(function()
+        local content = readfile(PANEL_POSITIONS_FILE)
+        local data = HttpService:JSONDecode(content)
+        
+        if not data.panels then return end
+        
+        local panels = {
+            {name = "ScriptsPanel", key = "Scripts"},
+            {name = "HealthPanel", key = "Health"},
+            {name = "FunctionsPanel", key = "Functions"},
+            {name = "ChatPanel", key = "Chat"}
+        }
+        
+        for _, panelInfo in ipairs(panels) do
+            local panel = ComplexHUD:FindFirstChild(panelInfo.name)
+            local savedData = data.panels[panelInfo.key]
+            
+            if panel and savedData then
+                -- Restaurar posición
+                if savedData.position then
+                    panel.Position = UDim2.new(
+                        savedData.position.XScale,
+                        savedData.position.XOffset,
+                        savedData.position.YScale,
+                        savedData.position.YOffset
+                    )
+                end
+                
+                -- Restaurar tamaño (para paneles colapsados)
+                if savedData.size then
+                    panel.Size = UDim2.new(
+                        savedData.size.XScale,
+                        savedData.size.XOffset,
+                        savedData.size.YScale,
+                        savedData.size.YOffset
+                    )
+                end
+                
+                -- Restaurar estado expandido/colapsado
+                if savedData.expanded ~= nil then
+                    PanelStates[panelInfo.key] = savedData.expanded
+                    
+                    -- Actualizar botón de toggle
+                    local header = panel:FindFirstChild("Frame")
+                    if header then
+                        local toggleBtn = header:FindFirstChild("ToggleButton")
+                        if toggleBtn then
+                            toggleBtn.Text = savedData.expanded and "▼" or "▶"
+                        end
+                    end
+                    
+                    -- Ocultar/mostrar contenido según estado
+                    if not savedData.expanded then
+                        for _, child in pairs(panel:GetChildren()) do
+                            if child ~= panel:FindFirstChild("Frame") and 
+                               not child:IsA("UICorner") and 
+                               not child:IsA("UIStroke") then
+                                child.Visible = false
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
+        print("[Lux Complex] Posiciones cargadas:", #panels, "paneles")
+    end)
+    
+    return success
+end
+
+-- Función para resetear posiciones a valores por defecto
+local function ResetPanelPositions()
+    if not ComplexHUD then return end
+    
+    local defaultPositions = {
+        ScriptsPanel = UDim2.new(0, 20, 0, 20),
+        HealthPanel = UDim2.new(1, -320, 0, 20),
+        FunctionsPanel = UDim2.new(1, -320, 0.5, -200),
+        ChatPanel = UDim2.new(0, 20, 0.5, -225)
+    }
+    
+    local defaultSizes = {
+        ScriptsPanel = UDim2.new(0, 280, 0, 320),
+        HealthPanel = UDim2.new(0, 300, 0, 200),
+        FunctionsPanel = UDim2.new(0, 300, 0, 400),
+        ChatPanel = UDim2.new(0, 400, 0, 450)
+    }
+    
+    for panelName, defaultPos in pairs(defaultPositions) do
+        local panel = ComplexHUD:FindFirstChild(panelName)
+        if panel then
+            -- Animar regreso a posición original
+            local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+            local tween = TweenService:Create(panel, tweenInfo, {
+                Position = defaultPos,
+                Size = defaultSizes[panelName]
+            })
+            tween:Play()
+            
+            -- Expandir panel
+            local header = panel:FindFirstChild("Frame")
+            if header then
+                local toggleBtn = header:FindFirstChild("ToggleButton")
+                if toggleBtn then
+                    toggleBtn.Text = "▼"
+                end
+            end
+            
+            -- Mostrar todo el contenido
+            for _, child in pairs(panel:GetChildren()) do
+                if child ~= panel:FindFirstChild("Frame") and 
+                   not child:IsA("UICorner") and 
+                   not child:IsA("UIStroke") then
+                    child.Visible = true
+                end
+            end
+            
+            -- Actualizar estado
+            local key = panelName:gsub("Panel", "")
+            PanelStates[key] = true
+        end
+    end
+    
+    -- Eliminar archivo de guardado
+    if isfile and isfile(PANEL_POSITIONS_FILE) then
+        delfile(PANEL_POSITIONS_FILE)
+    end
+    
+    print("[Lux Complex] Posiciones reseteadas")
+end
+
+-- Función para hacer un frame arrastrable (MEJORADA - soporta touch + auto-save)
+local function MakePanelDraggable(frame)
+    local dragging = false
+    local dragInput
+    local dragStart
+    local startPos
+    local saveDebounce = false
+    
+    local function update(input)
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(
+            startPos.X.Scale,
+            startPos.X.Offset + delta.X,
+            startPos.Y.Scale,
+            startPos.Y.Offset + delta.Y
+        )
+    end
+    
+    -- Detectar inicio de arrastre
+    frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            
+            -- Solo arrastrar si se clickea el header
+            local mousePos = input.Position
+            local header = frame:FindFirstChild("Frame") -- El header
+            
+            if header then
+                local headerPos = header.AbsolutePosition
+                local headerSize = header.AbsoluteSize
+                
+                -- Verificar si el click está dentro del header
+                if mousePos.X >= headerPos.X and mousePos.X <= headerPos.X + headerSize.X and
+                   mousePos.Y >= headerPos.Y and mousePos.Y <= headerPos.Y + headerSize.Y then
+                    
+                    dragging = true
+                    dragStart = input.Position
+                    startPos = frame.Position
+                    
+                    input.Changed:Connect(function()
+                        if input.UserInputState == Enum.UserInputState.End then
+                            dragging = false
+                            
+                            -- Auto-guardar posición cuando se suelta (con debounce)
+                            if not saveDebounce then
+                                saveDebounce = true
+                                task.wait(0.5) -- Esperar medio segundo antes de guardar
+                                SavePanelPositions()
+                                saveDebounce = false
+                            end
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+    
+    -- Detectar movimiento
+    frame.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or
+           input.UserInputType == Enum.UserInputType.Touch then
+            dragInput = input
+        end
+    end)
+    
+    -- Actualizar posición
+    UserInputService.InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            update(input)
+        end
+    end)
+end
+
+-- Función para actualizar el toggle button con auto-save
+local function CreateToggleButton(panel, panelName, defaultExpanded)
+    local toggleBtn = Instance.new("TextButton")
+    toggleBtn.Name = "ToggleButton"
+    toggleBtn.Size = UDim2.new(0, 30, 0, 30)
+    toggleBtn.Position = UDim2.new(1, -38, 0, 5)
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    toggleBtn.BackgroundTransparency = 0.3
+    toggleBtn.Text = defaultExpanded and "▼" or "▶"
+    toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleBtn.Font = Enum.Font.GothamBold
+    toggleBtn.TextSize = 14
+    toggleBtn.ZIndex = 10
+    toggleBtn.Parent = panel:FindFirstChild("Frame") or panel -- Header
+    
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 6)
+    btnCorner.Parent = toggleBtn
+    
+    -- Estado inicial
+    local isExpanded = defaultExpanded
+    PanelStates[panelName] = isExpanded
+    
+    -- Guardar tamaño original
+    local originalSize = panel.Size
+    local headerHeight = (panel:FindFirstChild("Frame") and panel:FindFirstChild("Frame").Size.Y.Offset) or 40
+    local collapsedSize = UDim2.new(originalSize.X.Scale, originalSize.X.Offset, 0, headerHeight)
+    
+    -- Función de toggle
+    local function TogglePanel()
+        isExpanded = not isExpanded
+        PanelStates[panelName] = isExpanded
+        
+        local targetSize = isExpanded and originalSize or collapsedSize
+        local targetText = isExpanded and "▼" or "▶"
+        
+        -- Animar colapso/expansión
+        local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(panel, tweenInfo, {Size = targetSize})
+        tween:Play()
+        
+        toggleBtn.Text = targetText
+        
+        -- Auto-guardar estado
+        task.spawn(function()
+            task.wait(0.3) -- Esperar a que termine la animación
+            SavePanelPositions()
+        end)
+        
+        -- Ocultar/mostrar contenido (excepto header)
+        for _, child in pairs(panel:GetChildren()) do
+            if child ~= panel:FindFirstChild("Frame") and not child:IsA("UICorner") and not child:IsA("UIStroke") then
+                child.Visible = isExpanded
+            end
+        end
+    end
+    
+    toggleBtn.MouseButton1Click:Connect(TogglePanel)
+    
+    -- Estado inicial
+    if not isExpanded then
+        panel.Size = collapsedSize
+        for _, child in pairs(panel:GetChildren()) do
+            if child ~= panel:FindFirstChild("Frame") and not child:IsA("UICorner") and not child:IsA("UIStroke") then
+                child.Visible = false
+            end
+        end
+    end
+    
+    return toggleBtn
 end
 
 -- Función para actualizar datos del HUD en tiempo real
